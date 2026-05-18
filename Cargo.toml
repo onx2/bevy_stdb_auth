@@ -1,0 +1,38 @@
+[package]
+name = "bevy_stdb_auth"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+description = "A Bevy-native integration for the SpacetimeAuth issuer."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/onx2/bevy_stdb_auth"
+homepage = "https://github.com/onx2/bevy_stdb_auth"
+documentation = "https://docs.rs/bevy_stdb_auth"
+keywords = ["bevy", "authentication", "ecs", "auth", "token"]
+categories = ["game-development"]
+exclude = [
+    "examples/",
+    ".github/",
+]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[dependencies]
+bevy_app = "0.18"
+bevy_ecs = "0.18"
+bevy_tasks = "0.18"
+bevy_time = "0.18"
+
+[features]
+default = []
+
+browser = []
+oidc = []
+steam = []
+
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
