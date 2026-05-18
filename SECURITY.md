@@ -1,3 +1,3 @@
 # Security Policy
 
-Please report security vulnerabilities through GitHub's [Vulnerability Reporting](https://github.com/onx2/bevy_auth/security).
+Please report security vulnerabilities through GitHub's [Vulnerability Reporting](https://github.com/onx2/bevy_stdb_auth/security).

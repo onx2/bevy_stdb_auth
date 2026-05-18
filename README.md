@@ -198,6 +198,4 @@ The feature model may change while the crate is still experimental.
 
 ## Notes
 
-This crate is currently scoped to SpacetimeAuth. A more generic `bevy_auth` crate may be extracted later after the SpacetimeAuth API proves itself in real projects.
-
-Special thanks to [`bevy_stdb`](https://github.com/onx2/bevy_stdb) for the command and message integration patterns.
+This crate is currently scoped to SpacetimeAuth. A more generic `bevy_stdb_auth` crate may be extracted later after the SpacetimeAuth API proves itself in real projects.
