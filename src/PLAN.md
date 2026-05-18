@@ -1,72 +1,62 @@
-# Bevy SpacetimeDB Auth Plan
+# Bevy SpacetimeAuth Plan
 
 ## Goal
 
-Build a Bevy-native SpacetimeAuth companion crate that acquires, refreshes, exposes, and clears SpacetimeDB-compatible auth tokens.
+Build a Bevy-native integration for SpacetimeAuth that acquires, refreshes, exposes, and clears SpacetimeDB-compatible auth tokens.
 
-The crate should focus on SpacetimeAuth first. It should be a proving ground for the auth API before generalizing into a broader `bevy_auth` crate.
-
-## Non-goals
-
-- Do not support Auth0, AWS Cognito, Firebase, or other token issuers yet.
-- Do not depend on `bevy_stdb` mechanically.
-- Do not directly manage SpacetimeDB connections.
-- Do not design a universal provider abstraction before the SpacetimeAuth implementation is stable.
+`bevy_stdb_auth` is specific to SpacetimeAuth and Bevy. It supports the SpacetimeAuth OIDC flow on native and browser targets, and the SpacetimeAuth Steam ticket exchange flow on native targets.
 
 ## Core boundary
 
-`bevy_stdb_auth` produces and maintains auth sessions. Applications decide how to use the tokens.
+`bevy_stdb_auth` owns authentication state and token lifecycle. Applications decide how to use the tokens.
 
-Typical `bevy_stdb` integration:
+The crate should not manage SpacetimeDB connections directly. A typical `bevy_stdb` integration is:
 
-- on auth success, connect with `StdbConnectOptions::from_token(...)`
-- on token refresh, update or reconnect with the new token
-- on logout, disconnect and clear local connection state
+- on `StdbAuthSucceededMessage`, connect with `StdbConnectOptions::from_token(...)`
+- on `StdbAuthTokenRefreshedMessage`, update or reconnect with the new token
+- on `StdbAuthLogoutSucceededMessage`, disconnect and clear local connection state
 
-If useful, `bevy_stdb` can later expose `set_token` and `clear_token` helpers to make token refresh integration easier.
+The exact glue should live in the application or examples.
 
 ## Supported auth sources
 
-Initial sources:
-
-- SpacetimeAuth OIDC
-- SpacetimeAuth Steam ticket exchange
-
-Suggested API shape:
+Supported sources:
 
 - `StdbAuthSource::Oidc(StdbOidcAuthOptions)`
 - `StdbAuthSource::Steam(StdbSteamAuthOptions)`
+- `StdbAuthSource::Token(StdbTokenAuthOptions)` for existing-token sessions and tests
 
-Steam is scoped specifically as a SpacetimeAuth exchange flow, not as a generic Steam identity provider.
+`Steam` means Steam ticket exchange through SpacetimeAuth. It is not a generic Steam identity provider.
 
-## Public API shape
+## Public API
 
 ### Plugin
 
 `StdbAuthPlugin` installs login, logout, browser callback resume, and token refresh systems.
 
-Plugin configuration should include:
+Configuration:
 
 - auto-refresh enabled by default
 - refresh buffer duration
-- optional browser callback auto-resume
+- browser callback auto-resume enabled by default when browser OIDC is enabled
 
 ### Commands
 
-Use a Bevy `SystemParam` named `StdbAuthCommands`, following the `bevy_stdb` command pattern.
+Use a Bevy `SystemParam` named `StdbAuthCommands`.
 
-Initial methods:
+Methods:
 
-- `login(StdbLoginOptions)` starts an auth flow.
-- `logout(StdbLogoutOptions)` clears the current session and runs provider logout when supported.
-- `clear_session()` clears local auth state without contacting SpacetimeAuth.
-- `refresh_now()` requests an immediate refresh when a refresh token is available.
-- `cancel_pending()` clears local pending auth task state when possible.
+- `login(StdbLoginOptions)` starts an auth flow
+- `logout(StdbLogoutOptions)` clears the current session and runs SpacetimeAuth logout when supported
+- `clear_session()` clears local auth state without contacting SpacetimeAuth
+- `refresh_now()` requests an immediate refresh when a refresh token is available
+- `cancel_pending()` clears local pending auth task state when possible
 
-`StdbAuthCommands` should be conservative:
+`StdbAuthCommands` should:
 
-- no-op when login/logout is already pending unless the command explicitly cancels or replaces it
+- no-op when login/logout is already pending unless a command explicitly cancels or replaces it
 - update only auth crate resources
+- emit lifecycle messages through plugin systems
 - never directly connect or disconnect `bevy_stdb`
 
 ### Resources
@@ -75,9 +65,10 @@ Public resources:
 
 - `StdbAuthSession`: current auth state
 
-Suggested fields:
+`StdbAuthSession` should contain:
 
 - access token
+- token type
 - optional ID token
 - optional refresh token
 - optional expires-at time
@@ -106,23 +97,30 @@ Lifecycle messages:
 - `StdbAuthLogoutFailedMessage`
 - `StdbAuthSessionClearedMessage`
 
-Applications can listen to these messages and decide how to route UI or update other clients.
+Applications listen to these messages to route UI, update tokens, reconnect clients, or clear local game state.
 
 ## Feature strategy
 
-Start pragmatic and keep features minimal.
+Keep features scoped to the supported SpacetimeAuth flows.
 
 Candidate features:
 
-- `browser`: enables browser runtime support and browser APIs
-- `oidc`: enables SpacetimeAuth OIDC support
-- `steam`: enables SpacetimeAuth Steam ticket exchange
+- `browser`: browser runtime support and browser APIs
+- `oidc`: SpacetimeAuth OIDC support
+- `steam`: SpacetimeAuth Steam ticket exchange support
 
-The feature model can be revisited after implementation. The priority is to avoid blocking the auth architecture on feature-flag design.
+Expected combinations:
 
-## Shared SpacetimeAuth token model
+- native OIDC: `oidc`
+- browser OIDC: `browser`, `oidc`
+- native Steam: `steam`
+- native OIDC + Steam: `oidc`, `steam`
 
-Both OIDC and Steam should normalize responses into one token/session shape.
+The `steam` feature is native-only. Browser builds should not enable `steam`.
+
+## Shared token model
+
+OIDC and Steam should normalize responses into one token/session shape.
 
 Shared token response fields:
 
@@ -135,47 +133,54 @@ Shared token response fields:
 
 ## OIDC flow
 
+SpacetimeAuth OIDC uses authorization code flow with PKCE.
+
 Shared OIDC behavior:
 
 - PKCE challenge/verifier generation
-- CSRF state
+- CSRF state generation and validation
 - authorization URL construction
 - callback parsing
 - authorization code exchange
+- token response normalization
 - refresh token exchange
-- optional end-session handling
+- end-session handling
 
 ### Native OIDC
 
-Native OIDC should use:
+Native OIDC uses:
 
 - loopback redirect listener
 - system browser open
 - PKCE authorization code flow
 - blocking HTTP inside Bevy `IoTaskPool`
 
+Native OIDC should not block Bevy's main schedule.
+
 ### Browser OIDC
 
-Browser OIDC should use:
+Browser OIDC uses:
 
 - `window.location` redirects
 - `sessionStorage` pending context
 - automatic callback detection after reload
 - async browser HTTP
-- URL cleanup after callback processing
+- browser URL cleanup after callback processing
 
 Browser callback resume must not require the app to call login again after returning from SpacetimeAuth.
 
 ## Steam flow
 
-SpacetimeAuth Steam flow:
+SpacetimeAuth Steam support is native-only.
+
+Flow:
 
 1. request Steam Web API ticket from Steamworks
 2. hex-encode the ticket
 3. exchange the ticket with SpacetimeAuth token endpoint
 4. normalize token response into `StdbAuthSession`
 
-This flow is native-only for now.
+The Steam flow should run off the main Bevy schedule through auth tasks.
 
 ## Refresh strategy
 
@@ -192,23 +197,23 @@ On refresh success:
 On refresh failure:
 
 - emit `StdbAuthRefreshFailedMessage`
-- keep or clear the session based on a configurable policy
+- keep or clear the current session according to the configured policy
 
 ## Logout strategy
 
-Logout should always clear local session state.
+Logout should always clear local auth state.
 
 For OIDC sessions:
 
-- browser may redirect to SpacetimeAuth end-session endpoint
-- native may open/call the end-session endpoint depending on final behavior
+- browser may redirect to the SpacetimeAuth end-session endpoint
+- native may open or call the SpacetimeAuth end-session endpoint, depending on final endpoint behavior
 
 For Steam sessions:
 
 - clear local session state
-- no OIDC end-session call unless SpacetimeAuth requires one for the issued token
+- do not call OIDC end-session unless SpacetimeAuth requires it for Steam-issued sessions
 
-Provider logout failures should not prevent local session clearing.
+SpacetimeAuth logout failures should not prevent local session clearing.
 
 ## Integration with `bevy_stdb`
 
@@ -217,10 +222,8 @@ Provider logout failures should not prevent local session clearing.
 Example integration behavior:
 
 - on `StdbAuthSucceededMessage`, call `stdb.connect(StdbConnectOptions::from_token(session.access_token.clone()))`
-- on `StdbAuthTokenRefreshedMessage`, update the token or reconnect
+- on `StdbAuthTokenRefreshedMessage`, update or reconnect with the new token
 - on `StdbAuthLogoutSucceededMessage`, call `stdb.disconnect()`
-
-The exact glue should live in the application or an optional integration example.
 
 ## Implementation phases
 
@@ -232,11 +235,11 @@ The exact glue should live in the application or an optional integration example
 - Add `StdbAuthPlugin`
 - Add `StdbAuthCommands`
 - Add pending login/logout polling
-- Add fake/test auth source for local testing if useful
+- Add `StdbAuthSource::Token` for local validation
 
 ### Phase 2: Shared SpacetimeAuth OIDC core
 
-- Define OIDC options
+- Define `StdbOidcAuthOptions`
 - Build authorization URL with PKCE and state
 - Normalize token responses
 - Implement refresh token exchange
@@ -267,6 +270,7 @@ The exact glue should live in the application or an optional integration example
 
 ### Phase 6: Steam exchange
 
+- Add `StdbSteamAuthOptions`
 - Add Steamworks ticket request
 - Exchange Steam ticket with SpacetimeAuth
 - Normalize token response
@@ -283,10 +287,10 @@ The exact glue should live in the application or an optional integration example
 Automated checks:
 
 - default features
-- OIDC feature
-- browser OIDC feature combination
-- Steam feature
-- OIDC + Steam feature combination
+- `oidc`
+- `browser`, `oidc`
+- `steam`
+- `oidc`, `steam`
 
 Manual checks:
 
@@ -298,25 +302,8 @@ Manual checks:
 - OIDC logout behavior
 - Steam ticket exchange success/failure
 
-## Future generalization
-
-After `bevy_stdb_auth` is stable, consider extracting a more generic `bevy_auth` core.
-
-Potential future issuers:
-
-- Auth0
-- AWS Cognito
-- Custom OIDC
-- Firebase / Google Identity Platform
-- Keycloak
-- Okta
-- Microsoft Entra ID
-
-Do not generalize until the SpacetimeAuth API proves itself in real projects.
-
 ## Open decisions
 
-- Final crate name: `bevy_stdb_auth` vs keeping `bevy_auth` during experimentation.
 - Whether native token persistence belongs in this crate.
 - Whether native OIDC logout should POST, open browser, or be local-only.
 - Whether refresh failure should keep or clear the current session by default.
