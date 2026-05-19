@@ -3,12 +3,20 @@
 //! `bevy_stdb_auth` acquires and maintains authentication tokens for applications
 //! that use SpacetimeAuth. Applications decide how to use those tokens.
 
+mod alias;
+mod commands;
+mod message;
+mod session;
+
 use bevy_app::{App, Plugin, PreUpdate};
-use bevy_ecs::{
-    prelude::{Commands, IntoScheduleConfigs, Message, Res, Resource, World, resource_exists},
-    system::SystemParam,
+use bevy_ecs::prelude::{IntoScheduleConfigs, Resource, World, resource_exists};
+use bevy_tasks::{Task, block_on, poll_once};
+use message::{
+    StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
+    StdbAuthRefreshFailedMessage, StdbAuthSessionClearedMessage, StdbAuthSucceededMessage,
+    StdbAuthTokenRefreshedMessage,
 };
-use bevy_tasks::{IoTaskPool, Task, block_on, poll_once};
+use session::{StdbAuthSession, StdbAuthSessionSource};
 use std::{fmt::Display, time::Duration, time::Instant};
 
 const DEFAULT_REFRESH_BUFFER_SECS: u64 = 60;
@@ -34,13 +42,6 @@ impl Default for StdbAuthPlugin {
     }
 }
 
-impl StdbAuthPlugin {
-    /// Creates a [`StdbAuthPlugin`] with default settings.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 impl Plugin for StdbAuthPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<StdbAuthSucceededMessage>();
@@ -55,120 +56,6 @@ impl Plugin for StdbAuthPlugin {
             PreUpdate,
             poll_pending_auth.run_if(resource_exists::<PendingAuthOperation>),
         );
-    }
-}
-
-/// Sends authentication commands from Bevy systems.
-#[derive(SystemParam)]
-pub struct StdbAuthCommands<'w, 's> {
-    commands: Commands<'w, 's>,
-    pending_auth: Option<Res<'w, PendingAuthOperation>>,
-    session: Option<Res<'w, StdbAuthSession>>,
-}
-
-impl StdbAuthCommands<'_, '_> {
-    /// Starts a login flow using [`StdbLoginOptions`].
-    pub fn login(&mut self, options: StdbLoginOptions) {
-        if self.pending_auth.is_some() {
-            return;
-        }
-
-        let source = options.source;
-        let task = IoTaskPool::get().spawn(async move { source.acquire_session().await });
-        self.commands
-            .insert_resource(PendingAuthOperation::Login(task));
-    }
-
-    /// Starts a logout flow for the current [`StdbAuthSession`].
-    pub fn logout(&mut self, _options: StdbLogoutOptions) {
-        if self.pending_auth.is_some() {
-            return;
-        }
-
-        if self.session.is_none() {
-            self.commands.insert_resource(PendingAuthOperation::Clear);
-            return;
-        }
-
-        let task = IoTaskPool::get().spawn(async { Ok(()) });
-        self.commands
-            .insert_resource(PendingAuthOperation::Logout(task));
-    }
-
-    /// Clears local authentication state without contacting SpacetimeAuth.
-    pub fn clear_session(&mut self) {
-        self.commands.insert_resource(PendingAuthOperation::Clear);
-    }
-
-    /// Requests an immediate token refresh for the current [`StdbAuthSession`].
-    pub fn refresh_now(&mut self) {
-        if self.pending_auth.is_some() {
-            return;
-        }
-
-        let Some(session) = self.session.as_deref() else {
-            return;
-        };
-
-        if session.refresh_token.is_none() {
-            let task = IoTaskPool::get().spawn(async {
-                Err(StdbAuthError::Unsupported(
-                    "the current auth session does not include a refresh token".to_string(),
-                ))
-            });
-            self.commands
-                .insert_resource(PendingAuthOperation::Refresh(task));
-            return;
-        }
-
-        let task = IoTaskPool::get().spawn(async {
-            Err(StdbAuthError::Unsupported(
-                "token refresh is not implemented for this auth source".to_string(),
-            ))
-        });
-        self.commands
-            .insert_resource(PendingAuthOperation::Refresh(task));
-    }
-
-    /// Clears any local pending authentication operation.
-    pub fn cancel_pending(&mut self) {
-        self.commands.remove_resource::<PendingAuthOperation>();
-    }
-}
-
-/// Options for starting an authentication flow.
-#[derive(Clone, Debug)]
-pub struct StdbLoginOptions {
-    /// The authentication source used to acquire a session.
-    pub source: StdbAuthSource,
-}
-
-impl StdbLoginOptions {
-    /// Creates [`StdbLoginOptions`] with the given [`StdbAuthSource`].
-    pub fn new(source: StdbAuthSource) -> Self {
-        Self { source }
-    }
-}
-
-/// Options for logging out of the current authentication session.
-#[derive(Clone, Debug, Default)]
-pub struct StdbLogoutOptions {
-    /// Whether provider-backed local credentials should be cleared.
-    pub clear_stored_credentials: bool,
-}
-
-/// The source used to acquire a [`StdbAuthSession`].
-#[derive(Clone, Debug)]
-pub enum StdbAuthSource {
-    /// Uses an existing token as a local auth session.
-    Token(StdbTokenAuthOptions),
-}
-
-impl StdbAuthSource {
-    async fn acquire_session(self) -> Result<StdbAuthSession, StdbAuthError> {
-        match self {
-            Self::Token(options) => Ok(options.into_session()),
-        }
     }
 }
 
@@ -220,77 +107,6 @@ impl StdbTokenAuthOptions {
         }
     }
 }
-
-/// The current SpacetimeAuth session.
-#[derive(Clone, Debug, Resource)]
-pub struct StdbAuthSession {
-    /// The access token used by authenticated clients.
-    pub access_token: String,
-    /// The token type, such as `Bearer`.
-    pub token_type: String,
-    /// The instant when the access token expires.
-    pub expires_at: Option<Instant>,
-    /// The optional refresh token used to acquire a new access token.
-    pub refresh_token: Option<String>,
-    /// The granted OAuth scopes.
-    pub scope: Option<String>,
-    /// The optional OIDC ID token.
-    pub id_token: Option<String>,
-    /// The optional client ID associated with this session.
-    pub client_id: Option<String>,
-    /// The source that produced this session.
-    pub source: StdbAuthSessionSource,
-}
-
-/// The source that produced a [`StdbAuthSession`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StdbAuthSessionSource {
-    /// The session was created from an existing token.
-    Token,
-}
-
-/// A message sent when authentication succeeds.
-#[derive(Clone, Debug, Message)]
-pub struct StdbAuthSucceededMessage {
-    /// The active authentication session.
-    pub session: StdbAuthSession,
-}
-
-/// A message sent when authentication fails.
-#[derive(Clone, Debug, Message)]
-pub struct StdbAuthFailedMessage {
-    /// The failure message.
-    pub message: String,
-}
-
-/// A message sent when the access token is refreshed.
-#[derive(Clone, Debug, Message)]
-pub struct StdbAuthTokenRefreshedMessage {
-    /// The active authentication session.
-    pub session: StdbAuthSession,
-}
-
-/// A message sent when token refresh fails.
-#[derive(Clone, Debug, Message)]
-pub struct StdbAuthRefreshFailedMessage {
-    /// The failure message.
-    pub message: String,
-}
-
-/// A message sent when logout succeeds.
-#[derive(Clone, Debug, Default, Message)]
-pub struct StdbAuthLogoutSucceededMessage;
-
-/// A message sent when logout fails.
-#[derive(Clone, Debug, Message)]
-pub struct StdbAuthLogoutFailedMessage {
-    /// The failure message.
-    pub message: String,
-}
-
-/// A message sent when local auth session state is cleared.
-#[derive(Clone, Debug, Default, Message)]
-pub struct StdbAuthSessionClearedMessage;
 
 /// An authentication lifecycle error.
 #[derive(Clone, Debug)]
@@ -397,10 +213,18 @@ fn clear_session(world: &mut World) {
 /// Common imports for `bevy_stdb_auth`.
 pub mod prelude {
     pub use crate::{
-        StdbAuthCommands, StdbAuthFailedMessage, StdbAuthLogoutFailedMessage,
-        StdbAuthLogoutSucceededMessage, StdbAuthPlugin, StdbAuthRefreshFailedMessage,
-        StdbAuthSession, StdbAuthSessionClearedMessage, StdbAuthSessionSource, StdbAuthSource,
-        StdbAuthSucceededMessage, StdbAuthTokenRefreshedMessage, StdbLoginOptions,
-        StdbLogoutOptions, StdbTokenAuthOptions,
+        StdbAuthPlugin, StdbTokenAuthOptions,
+        alias::{
+            ReadStdbAuthFailedMessage, ReadStdbAuthLogoutFailedMessage,
+            ReadStdbAuthLogoutSucceededMessage, ReadStdbAuthRefreshFailedMessage,
+            ReadStdbAuthSessionClearedMessage, ReadStdbAuthSucceededMessage,
+            ReadStdbAuthTokenRefreshedMessage,
+        },
+        commands::{StdbAuthCommands, StdbAuthSource, StdbLoginOptions, StdbLogoutOptions},
+        message::{
+            StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
+            StdbAuthRefreshFailedMessage, StdbAuthSessionClearedMessage, StdbAuthSucceededMessage,
+            StdbAuthTokenRefreshedMessage,
+        },
     };
 }

@@ -1,0 +1,121 @@
+use crate::session::StdbAuthSession;
+use crate::{PendingAuthOperation, StdbAuthError, StdbTokenAuthOptions};
+use bevy_ecs::{
+    prelude::{Commands, Res},
+    system::SystemParam,
+};
+use bevy_tasks::IoTaskPool;
+
+/// The source used to acquire a [`StdbAuthSession`].
+#[derive(Clone, Debug)]
+pub enum StdbAuthSource {
+    /// Uses an existing token as a local auth session.
+    Token(StdbTokenAuthOptions),
+}
+
+impl StdbAuthSource {
+    async fn acquire_session(self) -> Result<StdbAuthSession, StdbAuthError> {
+        match self {
+            Self::Token(options) => Ok(options.into_session()),
+        }
+    }
+}
+
+/// Options for starting an authentication flow.
+#[derive(Clone, Debug)]
+pub struct StdbLoginOptions {
+    /// The authentication source used to acquire a session.
+    pub source: StdbAuthSource,
+}
+
+impl StdbLoginOptions {
+    /// Creates [`StdbLoginOptions`] with the given [`StdbAuthSource`].
+    pub fn new(source: StdbAuthSource) -> Self {
+        Self { source }
+    }
+}
+
+/// Options for logging out of the current authentication session.
+#[derive(Clone, Debug, Default)]
+pub struct StdbLogoutOptions {
+    /// Whether provider-backed local credentials should be cleared.
+    pub clear_stored_credentials: bool,
+}
+
+/// Sends authentication commands from Bevy systems.
+#[derive(SystemParam)]
+pub struct StdbAuthCommands<'w, 's> {
+    commands: Commands<'w, 's>,
+    pending_auth: Option<Res<'w, PendingAuthOperation>>,
+    session: Option<Res<'w, StdbAuthSession>>,
+}
+
+impl StdbAuthCommands<'_, '_> {
+    /// Starts a login flow using [`StdbLoginOptions`].
+    pub fn login(&mut self, options: StdbLoginOptions) {
+        if self.pending_auth.is_some() {
+            return;
+        }
+
+        let source = options.source;
+        let task = IoTaskPool::get().spawn(async move { source.acquire_session().await });
+        self.commands
+            .insert_resource(PendingAuthOperation::Login(task));
+    }
+
+    /// Starts a logout flow for the current [`StdbAuthSession`].
+    pub fn logout(&mut self, _options: StdbLogoutOptions) {
+        if self.pending_auth.is_some() {
+            return;
+        }
+
+        if self.session.is_none() {
+            self.commands.insert_resource(PendingAuthOperation::Clear);
+            return;
+        }
+
+        let task = IoTaskPool::get().spawn(async { Ok(()) });
+        self.commands
+            .insert_resource(PendingAuthOperation::Logout(task));
+    }
+
+    /// Clears local authentication state without contacting SpacetimeAuth.
+    pub fn clear_session(&mut self) {
+        self.commands.insert_resource(PendingAuthOperation::Clear);
+    }
+
+    /// Requests an immediate token refresh for the current [`StdbAuthSession`].
+    pub fn refresh_now(&mut self) {
+        if self.pending_auth.is_some() {
+            return;
+        }
+
+        let Some(session) = self.session.as_deref() else {
+            return;
+        };
+
+        if session.refresh_token.is_none() {
+            let task = IoTaskPool::get().spawn(async {
+                Err(StdbAuthError::Unsupported(
+                    "the current auth session does not include a refresh token".to_string(),
+                ))
+            });
+            self.commands
+                .insert_resource(PendingAuthOperation::Refresh(task));
+            return;
+        }
+
+        let task = IoTaskPool::get().spawn(async {
+            Err(StdbAuthError::Unsupported(
+                "token refresh is not implemented for this auth source".to_string(),
+            ))
+        });
+        self.commands
+            .insert_resource(PendingAuthOperation::Refresh(task));
+    }
+
+    /// Clears any local pending authentication operation.
+    pub fn cancel_pending(&mut self) {
+        self.commands.remove_resource::<PendingAuthOperation>();
+    }
+}
