@@ -11,6 +11,9 @@ mod browser;
 #[cfg(not(target_arch = "wasm32"))]
 mod keyring;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use keyring::initialize_keyring_store;
+
 /// Determines how refresh credentials are persisted.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum StdbAuthPersistence {

@@ -1,4 +1,4 @@
-use bevy_ecs::prelude::Resource;
+use bevy_ecs::prelude::{Resource, World};
 use std::time::Instant;
 
 /// The source that produced a [`StdbAuthSession`].
@@ -33,4 +33,11 @@ pub struct StdbAuthSession {
     pub source: StdbAuthSessionSource,
     /// The optional URI returned to after provider logout.
     pub post_logout_redirect_uri: Option<String>,
+}
+
+/// Removes the active [`StdbAuthSession`] and returns its client ID.
+pub(crate) fn clear_session(world: &mut World) -> Option<String> {
+    world
+        .remove_resource::<StdbAuthSession>()
+        .and_then(|session| session.client_id)
 }

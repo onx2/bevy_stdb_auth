@@ -7,7 +7,7 @@ use crate::{
         StdbAuthRefreshFailedMessage, StdbAuthSessionClearedMessage, StdbAuthSucceededMessage,
         StdbAuthTokenRefreshedMessage,
     },
-    session::StdbAuthSession,
+    session::{StdbAuthSession, clear_session},
 };
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, Resource, World, resource_exists};
@@ -44,6 +44,12 @@ impl Default for StdbAuthPlugin {
 
 impl Plugin for StdbAuthPlugin {
     fn build(&self, app: &mut App) {
+        #[cfg(all(feature = "persistence", not(target_arch = "wasm32")))]
+        if self.persistence == StdbAuthPersistence::Keyring {
+            crate::persistence::initialize_keyring_store()
+                .expect("failed to initialize keyring credential store");
+        }
+
         app.add_message::<StdbAuthSucceededMessage>();
         app.add_message::<StdbAuthFailedMessage>();
         app.add_message::<StdbAuthTokenRefreshedMessage>();
@@ -94,15 +100,16 @@ fn poll_pending_auth(world: &mut World) {
                 return;
             };
 
-            clear_session(world);
+            let client_id = clear_session(world);
 
             match result {
                 Ok(()) => {
-                    world.write_message_default::<StdbAuthLogoutSucceededMessage>();
+                    world.write_message(StdbAuthLogoutSucceededMessage { client_id });
                 }
                 Err(error) => {
                     world.write_message(StdbAuthLogoutFailedMessage {
                         message: error.to_string(),
+                        client_id,
                     });
                 }
             }
@@ -126,8 +133,8 @@ fn poll_pending_auth(world: &mut World) {
             }
         }
         PendingAuthOperation::Clear => {
-            clear_session(world);
-            world.write_message_default::<StdbAuthSessionClearedMessage>();
+            let client_id = clear_session(world);
+            world.write_message(StdbAuthSessionClearedMessage { client_id });
         }
     }
 }
@@ -135,8 +142,4 @@ fn poll_pending_auth(world: &mut World) {
 fn apply_login_success(world: &mut World, session: StdbAuthSession) {
     world.insert_resource(session.clone());
     world.write_message(StdbAuthSucceededMessage { session });
-}
-
-fn clear_session(world: &mut World) {
-    world.remove_resource::<StdbAuthSession>();
 }
