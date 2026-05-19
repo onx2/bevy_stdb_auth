@@ -3,6 +3,9 @@
 //! `bevy_stdb_auth` acquires and maintains authentication tokens for applications
 //! that use SpacetimeAuth. Applications decide how to use those tokens.
 
+#[cfg(not(any(feature = "oidc", feature = "steam")))]
+compile_error!("enable at least one auth source feature: `oidc` or `steam`.");
+
 mod alias;
 mod commands;
 mod error;

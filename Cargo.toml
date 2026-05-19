@@ -60,14 +60,13 @@ oidc = [
     "dep:oauth2",
     "dep:webbrowser",
 ]
-persistence = [
-    "dep:keyring",
-]
 steam = [
     "dep:steamworks",
     "dep:hex",
 ]
-
+persistence = [
+    "dep:keyring",
+]
 
 [package.metadata.docs.rs]
 all-features = true
