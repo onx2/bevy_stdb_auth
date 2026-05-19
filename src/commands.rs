@@ -1,25 +1,12 @@
-use crate::session::StdbAuthSession;
-use crate::{PendingAuthOperation, StdbAuthError, StdbTokenAuthOptions};
+use crate::{
+    error::StdbAuthError, plugin::PendingAuthOperation, session::StdbAuthSession,
+    source::StdbAuthSource,
+};
 use bevy_ecs::{
     prelude::{Commands, Res},
     system::SystemParam,
 };
 use bevy_tasks::IoTaskPool;
-
-/// The source used to acquire a [`StdbAuthSession`].
-#[derive(Clone, Debug)]
-pub enum StdbAuthSource {
-    /// Uses an existing token as a local auth session.
-    Token(StdbTokenAuthOptions),
-}
-
-impl StdbAuthSource {
-    async fn acquire_session(self) -> Result<StdbAuthSession, StdbAuthError> {
-        match self {
-            Self::Token(options) => Ok(options.into_session()),
-        }
-    }
-}
 
 /// Options for starting an authentication flow.
 #[derive(Clone, Debug)]

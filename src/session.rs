@@ -6,6 +6,10 @@ use std::time::Instant;
 pub enum StdbAuthSessionSource {
     /// The session was created from an existing token.
     Token,
+    /// The session was created with the SpacetimeAuth OIDC flow.
+    Oidc,
+    /// The session was created with the SpacetimeAuth Steam flow.
+    Steam,
 }
 
 /// The current SpacetimeAuth session.
@@ -27,4 +31,6 @@ pub struct StdbAuthSession {
     pub client_id: Option<String>,
     /// The source that produced this session.
     pub source: StdbAuthSessionSource,
+    /// The optional URI returned to after provider logout.
+    pub post_logout_redirect_uri: Option<String>,
 }

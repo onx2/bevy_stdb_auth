@@ -5,7 +5,7 @@ use crate::message::{
 };
 use bevy_ecs::prelude::MessageReader;
 
-/// A [`MessageReader`] for  authentication succeeds.
+/// A [`MessageReader`] for [`StdbAuthSucceededMessage`].
 pub type ReadStdbAuthSucceededMessage<'w, 's> = MessageReader<'w, 's, StdbAuthSucceededMessage>;
 
 /// A [`MessageReader`] for [`StdbAuthFailedMessage`].
