@@ -1,3 +1,5 @@
+#[cfg(feature = "persistence")]
+use crate::persistence::StdbAuthPersistence;
 use crate::{
     error::StdbAuthError,
     message::{
@@ -23,6 +25,9 @@ pub struct StdbAuthPlugin {
     pub refresh_buffer: Duration,
     /// Whether browser callback URLs should be resumed automatically.
     pub auto_resume_browser_callback: bool,
+    /// How refresh credentials should be persisted.
+    #[cfg(feature = "persistence")]
+    pub persistence: StdbAuthPersistence,
 }
 
 impl Default for StdbAuthPlugin {
@@ -31,6 +36,8 @@ impl Default for StdbAuthPlugin {
             auto_refresh: true,
             refresh_buffer: Duration::from_secs(DEFAULT_REFRESH_BUFFER_SECS),
             auto_resume_browser_callback: true,
+            #[cfg(feature = "persistence")]
+            persistence: StdbAuthPersistence::None,
         }
     }
 }
