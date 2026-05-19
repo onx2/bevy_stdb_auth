@@ -1,5 +1,11 @@
 //! Optional refresh credential persistence backends.
 
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    not(any(target_os = "linux", target_os = "macos", target_os = "windows"))
+))]
+compile_error!("`persistence` keyring support is only available on Linux, macOS, and Windows.");
+
 #[cfg(all(target_arch = "wasm32", feature = "browser"))]
 mod browser;
 #[cfg(not(target_arch = "wasm32"))]

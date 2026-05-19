@@ -47,7 +47,16 @@ steamworks = { version = "0.13", optional = true }
 hex = { version = "0.4", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-keyring = { version = "3.6", optional = true, features = ["linux-native-sync-persistent", "apple-native", "windows-native"] }
+keyring-core = { version = "1", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = { version = "1", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus-secret-service-keyring-store = { version = "1", optional = true, features = ["rt-async-io-crypto-rust"] }
 
 [features]
 default = ["oidc"]
@@ -65,7 +74,10 @@ steam = [
     "dep:hex",
 ]
 persistence = [
-    "dep:keyring",
+    "dep:keyring-core",
+    "dep:apple-native-keyring-store",
+    "dep:windows-native-keyring-store",
+    "dep:zbus-secret-service-keyring-store",
 ]
 
 [package.metadata.docs.rs]
