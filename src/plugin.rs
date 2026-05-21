@@ -1,8 +1,9 @@
 use crate::{
     error::StdbAuthError,
     message::{
-        StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
-        StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage, StdbAuthTokenRefreshedMessage,
+        StdbAuthCommandRejectedMessage, StdbAuthFailedMessage, StdbAuthLogoutFailedMessage,
+        StdbAuthLogoutSucceededMessage, StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage,
+        StdbAuthTokenRefreshedMessage,
     },
     session::{StdbAuthSession, clear_session},
 };
@@ -42,6 +43,7 @@ impl Plugin for StdbAuthPlugin {
 
         app.add_message::<StdbAuthSucceededMessage>();
         app.add_message::<StdbAuthFailedMessage>();
+        app.add_message::<StdbAuthCommandRejectedMessage>();
         app.add_message::<StdbAuthTokenRefreshedMessage>();
         app.add_message::<StdbAuthRefreshFailedMessage>();
         app.add_message::<StdbAuthLogoutSucceededMessage>();

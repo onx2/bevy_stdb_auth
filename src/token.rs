@@ -19,6 +19,7 @@ pub struct StdbTokenResponse {
 }
 
 impl StdbTokenResponse {
+    #[allow(dead_code)]
     pub(crate) fn into_session(
         self,
         client_id: Option<String>,

@@ -1,6 +1,7 @@
 use crate::message::{
-    StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
-    StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage, StdbAuthTokenRefreshedMessage,
+    StdbAuthCommandRejectedMessage, StdbAuthFailedMessage, StdbAuthLogoutFailedMessage,
+    StdbAuthLogoutSucceededMessage, StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage,
+    StdbAuthTokenRefreshedMessage,
 };
 use bevy_ecs::prelude::MessageReader;
 
@@ -9,6 +10,10 @@ pub type ReadStdbAuthSucceededMessage<'w, 's> = MessageReader<'w, 's, StdbAuthSu
 
 /// A [`MessageReader`] for [`StdbAuthFailedMessage`].
 pub type ReadStdbAuthFailedMessage<'w, 's> = MessageReader<'w, 's, StdbAuthFailedMessage>;
+
+/// A [`MessageReader`] for [`StdbAuthCommandRejectedMessage`].
+pub type ReadStdbAuthCommandRejectedMessage<'w, 's> =
+    MessageReader<'w, 's, StdbAuthCommandRejectedMessage>;
 
 /// A [`MessageReader`] for [`StdbAuthTokenRefreshedMessage`].
 pub type ReadStdbAuthTokenRefreshedMessage<'w, 's> =

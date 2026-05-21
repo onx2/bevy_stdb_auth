@@ -13,6 +13,8 @@ use std::{
 };
 use steamworks::{Client, TicketForWebApiResponse};
 
+const STEAM_TOKEN_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Options for authenticating with a Steam Web API ticket.
 #[derive(Clone, Debug)]
 pub struct StdbSteamAuthOptions {
@@ -48,7 +50,10 @@ fn exchange_steam_ticket_request(
     client_id: &str,
     steam_ticket: &[u8],
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(STEAM_TOKEN_EXCHANGE_TIMEOUT)
+        .build()
+        .map_err(StdbAuthError::from)?;
     let response = client
         .post(format!("{AUTH_URI_BASE}/token"))
         .form(&[

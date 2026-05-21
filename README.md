@@ -45,12 +45,14 @@ fn main() {
 }
 
 fn login_with_steam(mut auth: StdbAuthCommands) {
-    auth.login(StdbLoginOptions::new(StdbAuthSource::Steam(
+    if let Err(error) = auth.login(StdbLoginOptions::new(StdbAuthSource::Steam(
         StdbSteamAuthOptions {
             client_id: "my-client-id".to_string(),
             app_id: 480,
         },
-    )));
+    ))) {
+        warn!("login request rejected: {error}");
+    }
 }
 
 fn on_auth_succeeded(mut messages: ReadStdbAuthSucceededMessage) {
@@ -108,6 +110,8 @@ Steam does not use persisted refresh-token recovery. This is because it is nativ
 
 Use `StdbAuthCommands` from normal Bevy systems to manage auth state.
 
+Command methods return `Result<(), StdbAuthCommandError>` when a request cannot be accepted against the currently visible world state. Deferred same-frame rejections emit `StdbAuthCommandRejectedMessage`.
+
 | Method | Behavior |
 |---|---|
 | `login` | Starts a login flow using `StdbLoginOptions` |
@@ -119,7 +123,9 @@ Use `StdbAuthCommands` from normal Bevy systems to manage auth state.
 use bevy_stdb_auth::prelude::*;
 
 fn logout(mut auth: StdbAuthCommands) {
-    auth.logout(StdbLogoutOptions::default());
+    if let Err(error) = auth.logout(StdbLogoutOptions::default()) {
+        warn!("logout request rejected: {error}");
+    }
 }
 ```
 
@@ -156,6 +162,7 @@ fn read_auth_session(session: Option<Res<StdbAuthSession>>) {
 
 - `StdbAuthSucceededMessage`
 - `StdbAuthFailedMessage`
+- `StdbAuthCommandRejectedMessage`
 - `StdbAuthTokenRefreshedMessage`
 - `StdbAuthRefreshFailedMessage`
 - `StdbAuthLogoutSucceededMessage`

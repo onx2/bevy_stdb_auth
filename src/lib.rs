@@ -6,6 +6,7 @@
 #[cfg(not(any(feature = "oidc", feature = "steam")))]
 compile_error!("enable at least one auth source feature: `oidc` or `steam`.");
 
+#[allow(dead_code)]
 pub(crate) const AUTH_URI_BASE: &str = "https://auth.spacetimedb.com/oidc";
 
 mod alias;
@@ -31,15 +32,20 @@ pub mod prelude {
     pub use crate::steam::StdbSteamAuthOptions;
     pub use crate::{
         alias::{
-            ReadStdbAuthFailedMessage, ReadStdbAuthLogoutFailedMessage,
-            ReadStdbAuthLogoutSucceededMessage, ReadStdbAuthRefreshFailedMessage,
-            ReadStdbAuthSucceededMessage, ReadStdbAuthTokenRefreshedMessage,
+            ReadStdbAuthCommandRejectedMessage, ReadStdbAuthFailedMessage,
+            ReadStdbAuthLogoutFailedMessage, ReadStdbAuthLogoutSucceededMessage,
+            ReadStdbAuthRefreshFailedMessage, ReadStdbAuthSucceededMessage,
+            ReadStdbAuthTokenRefreshedMessage,
         },
-        commands::{StdbAuthCommands, StdbLoginOptions, StdbLogoutOptions},
+        commands::{
+            StdbAuthCommandError, StdbAuthCommands, StdbAuthOperationKind, StdbLoginOptions,
+            StdbLogoutOptions,
+        },
         error::StdbAuthError,
         message::{
-            StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
-            StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage, StdbAuthTokenRefreshedMessage,
+            StdbAuthCommandRejectedMessage, StdbAuthFailedMessage, StdbAuthLogoutFailedMessage,
+            StdbAuthLogoutSucceededMessage, StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage,
+            StdbAuthTokenRefreshedMessage,
         },
         plugin::StdbAuthPlugin,
         session::{StdbAuthSession, StdbAuthSessionSource},

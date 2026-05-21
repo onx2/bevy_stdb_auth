@@ -1,4 +1,7 @@
-use crate::session::StdbAuthSession;
+use crate::{
+    commands::{StdbAuthCommandError, StdbAuthOperationKind},
+    session::StdbAuthSession,
+};
 use bevy_ecs::prelude::Message;
 
 /// A message sent when authentication succeeds.
@@ -13,6 +16,15 @@ pub struct StdbAuthSucceededMessage {
 pub struct StdbAuthFailedMessage {
     /// The failure message.
     pub message: String,
+}
+
+/// A message sent when an authentication command is rejected.
+#[derive(Clone, Debug, Message)]
+pub struct StdbAuthCommandRejectedMessage {
+    /// The rejected authentication operation.
+    pub operation: StdbAuthOperationKind,
+    /// The reason the authentication command was rejected.
+    pub error: StdbAuthCommandError,
 }
 
 /// A message sent when the access token is refreshed.
