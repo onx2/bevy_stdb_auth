@@ -1,15 +1,13 @@
-use crate::{error::StdbAuthError, session::StdbAuthSession, token::StdbTokenAuthOptions};
+use crate::{error::StdbAuthError, session::StdbAuthSession};
 
 #[cfg(feature = "oidc")]
-use crate::oidc::StdbOidcAuthOptions;
+use crate::oidc::{StdbOidcAuthOptions, acquire_session as acquire_oidc_session};
 #[cfg(feature = "steam")]
-use crate::steam::StdbSteamAuthOptions;
+use crate::steam::{StdbSteamAuthOptions, acquire_session as acquire_steam_session};
 
 /// The source used to acquire a [`StdbAuthSession`].
 #[derive(Clone, Debug)]
 pub enum StdbAuthSource {
-    /// Uses an existing token as a local auth session.
-    Token(StdbTokenAuthOptions),
     /// Uses the SpacetimeAuth OIDC authorization-code flow.
     #[cfg(feature = "oidc")]
     Oidc(StdbOidcAuthOptions),
@@ -21,15 +19,10 @@ pub enum StdbAuthSource {
 impl StdbAuthSource {
     pub(crate) async fn acquire_session(self) -> Result<StdbAuthSession, StdbAuthError> {
         match self {
-            Self::Token(options) => Ok(options.into()),
             #[cfg(feature = "oidc")]
-            Self::Oidc(_) => Err(StdbAuthError::Unsupported(
-                "OIDC authentication is not implemented yet".to_string(),
-            )),
+            Self::Oidc(options) => acquire_oidc_session(options).await,
             #[cfg(feature = "steam")]
-            Self::Steam(_) => Err(StdbAuthError::Unsupported(
-                "Steam authentication is not implemented yet".to_string(),
-            )),
+            Self::Steam(options) => acquire_steam_session(options),
         }
     }
 }

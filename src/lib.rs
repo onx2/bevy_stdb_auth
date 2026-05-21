@@ -6,12 +6,12 @@
 #[cfg(not(any(feature = "oidc", feature = "steam")))]
 compile_error!("enable at least one auth source feature: `oidc` or `steam`.");
 
+pub(crate) const AUTH_URI_BASE: &str = "https://auth.spacetimedb.com/oidc";
+
 mod alias;
 mod commands;
 mod error;
 mod message;
-#[cfg(feature = "persistence")]
-mod persistence;
 mod plugin;
 mod refresh;
 mod session;
@@ -19,49 +19,31 @@ mod source;
 mod token;
 
 #[cfg(feature = "oidc")]
-pub mod oidc;
+mod oidc;
 #[cfg(feature = "steam")]
-pub mod steam;
-
-pub use commands::{StdbAuthCommands, StdbLoginOptions, StdbLogoutOptions};
-pub use error::StdbAuthError;
-pub use message::{
-    StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
-    StdbAuthRefreshFailedMessage, StdbAuthSessionClearedMessage, StdbAuthSucceededMessage,
-    StdbAuthTokenRefreshedMessage,
-};
-#[cfg(feature = "persistence")]
-pub use persistence::StdbAuthPersistence;
-pub use plugin::StdbAuthPlugin;
-pub use session::{StdbAuthSession, StdbAuthSessionSource};
-pub use source::StdbAuthSource;
-pub use token::{StdbTokenAuthOptions, StdbTokenResponse};
+mod steam;
 
 /// Common imports for `bevy_stdb_auth`.
 pub mod prelude {
+    #[cfg(feature = "oidc")]
+    pub use crate::oidc::{StdbOidcAuthOptions, StdbOidcPrompt};
+    #[cfg(feature = "steam")]
+    pub use crate::steam::StdbSteamAuthOptions;
     pub use crate::{
-        StdbAuthCommands, StdbAuthError, StdbAuthPlugin, StdbAuthSession, StdbAuthSessionSource,
-        StdbAuthSource, StdbLoginOptions, StdbLogoutOptions, StdbTokenAuthOptions,
-        StdbTokenResponse,
         alias::{
             ReadStdbAuthFailedMessage, ReadStdbAuthLogoutFailedMessage,
             ReadStdbAuthLogoutSucceededMessage, ReadStdbAuthRefreshFailedMessage,
-            ReadStdbAuthSessionClearedMessage, ReadStdbAuthSucceededMessage,
-            ReadStdbAuthTokenRefreshedMessage,
+            ReadStdbAuthSucceededMessage, ReadStdbAuthTokenRefreshedMessage,
         },
+        commands::{StdbAuthCommands, StdbLoginOptions, StdbLogoutOptions},
+        error::StdbAuthError,
         message::{
             StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
-            StdbAuthRefreshFailedMessage, StdbAuthSessionClearedMessage, StdbAuthSucceededMessage,
-            StdbAuthTokenRefreshedMessage,
+            StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage, StdbAuthTokenRefreshedMessage,
         },
+        plugin::StdbAuthPlugin,
+        session::{StdbAuthSession, StdbAuthSessionSource},
+        source::StdbAuthSource,
+        token::StdbTokenResponse,
     };
-
-    #[cfg(feature = "persistence")]
-    pub use crate::StdbAuthPersistence;
-
-    #[cfg(feature = "oidc")]
-    pub use crate::oidc::{StdbOidcAuthOptions, StdbOidcPrompt};
-
-    #[cfg(feature = "steam")]
-    pub use crate::steam::StdbSteamAuthOptions;
 }

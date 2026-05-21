@@ -1,11 +1,8 @@
-#[cfg(feature = "persistence")]
-use crate::persistence::StdbAuthPersistence;
 use crate::{
     error::StdbAuthError,
     message::{
         StdbAuthFailedMessage, StdbAuthLogoutFailedMessage, StdbAuthLogoutSucceededMessage,
-        StdbAuthRefreshFailedMessage, StdbAuthSessionClearedMessage, StdbAuthSucceededMessage,
-        StdbAuthTokenRefreshedMessage,
+        StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage, StdbAuthTokenRefreshedMessage,
     },
     session::{StdbAuthSession, clear_session},
 };
@@ -25,9 +22,6 @@ pub struct StdbAuthPlugin {
     pub refresh_buffer: Duration,
     /// Whether browser callback URLs should be resumed automatically.
     pub auto_resume_browser_callback: bool,
-    /// How refresh credentials should be persisted.
-    #[cfg(feature = "persistence")]
-    pub persistence: StdbAuthPersistence,
 }
 
 impl Default for StdbAuthPlugin {
@@ -36,19 +30,15 @@ impl Default for StdbAuthPlugin {
             auto_refresh: true,
             refresh_buffer: Duration::from_secs(DEFAULT_REFRESH_BUFFER_SECS),
             auto_resume_browser_callback: true,
-            #[cfg(feature = "persistence")]
-            persistence: StdbAuthPersistence::None,
         }
     }
 }
 
 impl Plugin for StdbAuthPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(all(feature = "persistence", not(target_arch = "wasm32")))]
-        if self.persistence == StdbAuthPersistence::Keyring {
-            crate::persistence::initialize_keyring_store()
-                .expect("failed to initialize keyring credential store");
-        }
+        #[cfg(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32")))]
+        crate::oidc::persistence::initialize_keyring_store()
+            .expect("failed to initialize native keyring credential store");
 
         app.add_message::<StdbAuthSucceededMessage>();
         app.add_message::<StdbAuthFailedMessage>();
@@ -56,7 +46,6 @@ impl Plugin for StdbAuthPlugin {
         app.add_message::<StdbAuthRefreshFailedMessage>();
         app.add_message::<StdbAuthLogoutSucceededMessage>();
         app.add_message::<StdbAuthLogoutFailedMessage>();
-        app.add_message::<StdbAuthSessionClearedMessage>();
 
         app.add_systems(
             PreUpdate,
@@ -70,7 +59,6 @@ pub(crate) enum PendingAuthOperation {
     Login(Task<Result<StdbAuthSession, StdbAuthError>>),
     Logout(Task<Result<(), StdbAuthError>>),
     Refresh(Task<Result<StdbAuthSession, StdbAuthError>>),
-    Clear,
 }
 
 fn poll_pending_auth(world: &mut World) {
@@ -100,16 +88,15 @@ fn poll_pending_auth(world: &mut World) {
                 return;
             };
 
-            let client_id = clear_session(world);
+            clear_session(world);
 
             match result {
                 Ok(()) => {
-                    world.write_message(StdbAuthLogoutSucceededMessage { client_id });
+                    world.write_message_default::<StdbAuthLogoutSucceededMessage>();
                 }
                 Err(error) => {
                     world.write_message(StdbAuthLogoutFailedMessage {
                         message: error.to_string(),
-                        client_id,
                     });
                 }
             }
@@ -131,10 +118,6 @@ fn poll_pending_auth(world: &mut World) {
                     });
                 }
             }
-        }
-        PendingAuthOperation::Clear => {
-            let client_id = clear_session(world);
-            world.write_message(StdbAuthSessionClearedMessage { client_id });
         }
     }
 }

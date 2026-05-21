@@ -1,13 +1,15 @@
 //! OIDC authorization-code support for SpacetimeAuth.
-
 mod common;
+#[cfg(all(feature = "persistence", not(target_arch = "wasm32")))]
+pub(crate) mod persistence;
 
 #[cfg(all(feature = "oidc", feature = "browser"))]
 mod browser;
 #[cfg(all(feature = "oidc", not(feature = "browser")))]
-mod loopback;
-#[cfg(all(feature = "oidc", not(feature = "browser")))]
 mod native;
+
+use crate::error::StdbAuthError;
+use crate::session::StdbAuthSession;
 
 /// Controls the OIDC `prompt` authorization parameter.
 #[derive(Clone, Debug, Default)]
@@ -45,4 +47,17 @@ pub struct StdbOidcAuthOptions {
     pub scopes: Vec<String>,
     /// The prompt behavior for interactive authorization.
     pub prompt: StdbOidcPrompt,
+}
+
+pub(crate) async fn acquire_session(
+    options: StdbOidcAuthOptions,
+) -> Result<StdbAuthSession, StdbAuthError> {
+    #[cfg(feature = "browser")]
+    {
+        browser::acquire_session(options).await
+    }
+    #[cfg(not(feature = "browser"))]
+    {
+        native::acquire_session(options)
+    }
 }

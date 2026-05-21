@@ -56,19 +56,9 @@ impl StdbAuthCommands<'_, '_> {
             return;
         }
 
-        if self.session.is_none() {
-            self.commands.insert_resource(PendingAuthOperation::Clear);
-            return;
-        }
-
         let task = IoTaskPool::get().spawn(async { Ok(()) });
         self.commands
             .insert_resource(PendingAuthOperation::Logout(task));
-    }
-
-    /// Clears local authentication state without contacting SpacetimeAuth.
-    pub fn clear_session(&mut self) {
-        self.commands.insert_resource(PendingAuthOperation::Clear);
     }
 
     /// Requests an immediate token refresh for the current [`StdbAuthSession`].

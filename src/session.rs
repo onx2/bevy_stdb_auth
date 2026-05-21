@@ -4,8 +4,6 @@ use std::time::Instant;
 /// The source that produced a [`StdbAuthSession`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StdbAuthSessionSource {
-    /// The session was created from an existing token.
-    Token,
     /// The session was created with the SpacetimeAuth OIDC flow.
     Oidc,
     /// The session was created with the SpacetimeAuth Steam flow.
@@ -35,9 +33,7 @@ pub struct StdbAuthSession {
     pub post_logout_redirect_uri: Option<String>,
 }
 
-/// Removes the active [`StdbAuthSession`] and returns its client ID.
-pub(crate) fn clear_session(world: &mut World) -> Option<String> {
-    world
-        .remove_resource::<StdbAuthSession>()
-        .and_then(|session| session.client_id)
+/// Removes the active [`StdbAuthSession`].
+pub(crate) fn clear_session(world: &mut World) {
+    world.remove_resource::<StdbAuthSession>();
 }

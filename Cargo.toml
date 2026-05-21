@@ -26,6 +26,7 @@ bevy_tasks = "0.18"
 bevy_time = "0.18"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
+thiserror = { version = "2.0" }
 url = { version = "2.5" }
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "form"] }
 
@@ -40,26 +41,26 @@ web-sys = { version = "0.3", optional = true, default-features = false, features
 
 # OIDC dependencies
 oauth2 = { version = "5.0", optional = true, default-features = false }
-webbrowser = { version = "1", optional = true }
+webbrowser = { version = "1.2", optional = true }
 
 # Steam dependencies
 steamworks = { version = "0.13", optional = true }
 hex = { version = "0.4", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-keyring-core = { version = "1", optional = true }
+keyring-core = { version = "1.0", optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
+apple-native-keyring-store = { version = "1.0", optional = true, features = ["keychain"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-native-keyring-store = { version = "1", optional = true }
+windows-native-keyring-store = { version = "1.0", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-zbus-secret-service-keyring-store = { version = "1", optional = true, features = ["rt-async-io-crypto-rust"] }
+zbus-secret-service-keyring-store = { version = "1.0", optional = true, features = ["rt-async-io-crypto-rust"] }
 
 [features]
-default = ["oidc"]
+default = ["oidc", "steam"]
 
 browser = [
     "dep:js-sys",

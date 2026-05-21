@@ -31,23 +31,11 @@ pub struct StdbAuthRefreshFailedMessage {
 
 /// A message sent when logout succeeds.
 #[derive(Clone, Debug, Default, Message)]
-pub struct StdbAuthLogoutSucceededMessage {
-    /// The client ID associated with the cleared session.
-    pub client_id: Option<String>,
-}
+pub struct StdbAuthLogoutSucceededMessage;
 
 /// A message sent when logout fails.
 #[derive(Clone, Debug, Message)]
 pub struct StdbAuthLogoutFailedMessage {
     /// The failure message.
     pub message: String,
-    /// The client ID associated with the cleared session.
-    pub client_id: Option<String>,
-}
-
-/// A message sent when local auth session state is cleared.
-#[derive(Clone, Debug, Default, Message)]
-pub struct StdbAuthSessionClearedMessage {
-    /// The client ID associated with the cleared session.
-    pub client_id: Option<String>,
 }

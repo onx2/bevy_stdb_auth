@@ -386,6 +386,7 @@ dependencies = [
  "serde",
  "serde_json",
  "steamworks",
+ "thiserror 2.0.18",
  "url",
  "web-sys",
  "webbrowser",
