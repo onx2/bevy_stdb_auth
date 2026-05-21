@@ -1,10 +1,10 @@
 //! Steam ticket exchange support for SpacetimeAuth.
 
 use crate::{
-    AUTH_URI_BASE,
     error::StdbAuthError,
-    session::{StdbAuthSession, StdbAuthSessionSource},
+    session::{StdbAuthSessionParts, StdbAuthSessionSource},
     token::StdbTokenResponse,
+    transport::StdbAuthTransportConfig,
 };
 use std::{
     sync::mpsc,
@@ -12,8 +12,6 @@ use std::{
     time::{Duration, Instant},
 };
 use steamworks::{Client, TicketForWebApiResponse};
-
-const STEAM_TOKEN_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Options for authenticating with a Steam Web API ticket.
 #[derive(Clone, Debug)]
@@ -26,15 +24,17 @@ pub struct StdbSteamAuthOptions {
 
 pub(crate) fn acquire_session(
     options: StdbSteamAuthOptions,
-) -> Result<StdbAuthSession, StdbAuthError> {
-    let token = acquire_token_response(&options)?;
+    transport_config: &StdbAuthTransportConfig,
+) -> Result<StdbAuthSessionParts, StdbAuthError> {
+    let token = acquire_token_response(&options, transport_config)?;
 
-    Ok(token.into_session(Some(options.client_id), StdbAuthSessionSource::Steam, None))
+    token.into_session_parts(Some(options.client_id), StdbAuthSessionSource::Steam, None)
 }
 
 /// Acquires a token response using Steam authentication.
 fn acquire_token_response(
     options: &StdbSteamAuthOptions,
+    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
     let steam_client = Client::init_app(options.app_id).map_err(|error| {
         StdbAuthError::Internal(format!("failed to initialize Steam client: {error}"))
@@ -42,20 +42,18 @@ fn acquire_token_response(
 
     let ticket = request_steam_webapi_ticket(&steam_client)?;
 
-    exchange_steam_ticket_request(&options.client_id, &ticket)
+    exchange_steam_ticket_request(&options.client_id, &ticket, transport_config)
 }
 
 /// Exchanges a Steam Web API ticket for a token response.
 fn exchange_steam_ticket_request(
     client_id: &str,
     steam_ticket: &[u8],
+    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(STEAM_TOKEN_EXCHANGE_TIMEOUT)
-        .build()
-        .map_err(StdbAuthError::from)?;
+    let client = transport_config.blocking_token_client()?;
     let response = client
-        .post(format!("{AUTH_URI_BASE}/token"))
+        .post(transport_config.token_endpoint_url())
         .form(&[
             ("grant_type", "urn:spacetimeauth:steam-ticket"),
             ("steam_ticket", hex::encode(steam_ticket).as_str()),

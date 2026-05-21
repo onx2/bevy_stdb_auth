@@ -89,13 +89,51 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run cargo check
-        run: cargo check --target wasm32-unknown-unknown --features browser --locked
+        run: cargo check --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked
 
       - name: Run clippy
-        run: cargo clippy --target wasm32-unknown-unknown --features browser --locked -- -D warnings
+        run: cargo clippy --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked -- -D warnings
 
       - name: Build docs
-        run: cargo doc --target wasm32-unknown-unknown --no-deps --features browser --locked
+        run: cargo doc --target wasm32-unknown-unknown --no-deps --no-default-features --features oidc,browser --locked
+
+  feature-matrix:
+    name: Feature matrix
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev pkg-config
+
+      - name: Check OIDC-only native build
+        run: cargo check --no-default-features --features oidc --locked
+
+      - name: Check Steam-only native build
+        run: cargo check --no-default-features --features steam --locked
+
+      - name: Check OIDC persistence native build
+        run: cargo check --no-default-features --features oidc,persistence --locked
+
+      - name: Check native all-features build
+        run: cargo check --all-features --locked
+
+      - name: Run all-features clippy
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
   msrv:
     name: MSRV check

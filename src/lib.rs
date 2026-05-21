@@ -6,8 +6,16 @@
 #[cfg(not(any(feature = "oidc", feature = "steam")))]
 compile_error!("enable at least one auth source feature: `oidc` or `steam`.");
 
-#[allow(dead_code)]
-pub(crate) const AUTH_URI_BASE: &str = "https://auth.spacetimedb.com/oidc";
+#[cfg(all(target_arch = "wasm32", feature = "oidc", not(feature = "browser")))]
+compile_error!("enable the `browser` feature when using `oidc` on `wasm32` targets.");
+
+#[cfg(all(target_arch = "wasm32", feature = "steam"))]
+compile_error!("the `steam` feature is native-only and cannot be enabled on `wasm32` targets.");
+
+#[cfg(all(target_arch = "wasm32", feature = "persistence"))]
+compile_error!(
+    "the `persistence` feature is native-only and cannot be enabled on `wasm32` targets."
+);
 
 mod alias;
 mod commands;
@@ -18,17 +26,18 @@ mod refresh;
 mod session;
 mod source;
 mod token;
+mod transport;
 
 #[cfg(feature = "oidc")]
 mod oidc;
-#[cfg(feature = "steam")]
+#[cfg(all(feature = "steam", not(target_arch = "wasm32")))]
 mod steam;
 
 /// Common imports for `bevy_stdb_auth`.
 pub mod prelude {
     #[cfg(feature = "oidc")]
     pub use crate::oidc::{StdbOidcAuthOptions, StdbOidcPrompt};
-    #[cfg(feature = "steam")]
+    #[cfg(all(feature = "steam", not(target_arch = "wasm32")))]
     pub use crate::steam::StdbSteamAuthOptions;
     pub use crate::{
         alias::{
@@ -50,6 +59,6 @@ pub mod prelude {
         plugin::StdbAuthPlugin,
         session::{StdbAuthSession, StdbAuthSessionSource},
         source::StdbAuthSource,
-        token::StdbTokenResponse,
+        transport::StdbAuthTransportConfig,
     };
 }

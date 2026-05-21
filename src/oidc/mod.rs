@@ -1,15 +1,16 @@
 //! OIDC authorization-code support for SpacetimeAuth.
-mod common;
+pub(crate) mod common;
 #[cfg(all(feature = "persistence", not(target_arch = "wasm32")))]
 pub(crate) mod persistence;
 
-#[cfg(all(feature = "oidc", feature = "browser"))]
-mod browser;
-#[cfg(all(feature = "oidc", not(feature = "browser")))]
+#[cfg(all(feature = "oidc", feature = "browser", target_arch = "wasm32"))]
+pub(crate) mod browser;
+#[cfg(all(feature = "oidc", not(target_arch = "wasm32")))]
 mod native;
 
 use crate::error::StdbAuthError;
-use crate::session::StdbAuthSession;
+use crate::session::StdbAuthSessionParts;
+use crate::transport::StdbAuthTransportConfig;
 
 /// Controls the OIDC `prompt` authorization parameter.
 #[derive(Clone, Debug, Default)]
@@ -51,13 +52,14 @@ pub struct StdbOidcAuthOptions {
 
 pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
-) -> Result<StdbAuthSession, StdbAuthError> {
-    #[cfg(feature = "browser")]
+    transport_config: StdbAuthTransportConfig,
+) -> Result<StdbAuthSessionParts, StdbAuthError> {
+    #[cfg(all(feature = "browser", target_arch = "wasm32"))]
     {
-        browser::acquire_session(options).await
+        browser::acquire_session(options, transport_config).await
     }
-    #[cfg(not(feature = "browser"))]
+    #[cfg(not(target_arch = "wasm32"))]
     {
-        native::acquire_session(options)
+        native::acquire_session(options, &transport_config)
     }
 }

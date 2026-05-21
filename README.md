@@ -73,25 +73,26 @@ fn on_auth_succeeded(mut messages: ReadStdbAuthSucceededMessage) {
 
 ### Native OIDC
 
-Native OIDC uses the system browser and a loopback redirect listener:
+Native OIDC uses the system browser and a loopback redirect listener. The configured redirect URI must use `http`, a loopback host, and a non-zero explicit port.
 
-- build authorization URL with PKCE and CSRF state
+- build authorization URL with PKCE, CSRF state, and OIDC nonce
 - open the system browser
 - listen for the redirect on a local callback URL
 - exchange the authorization code for a SpacetimeAuth token response
 - normalize the response into `StdbAuthSession`
 
-When the `persistence` feature is enabled on native targets, OIDC refresh tokens are stored in the native OS keyring. On the next login attempt, the crate can try the stored refresh token before opening a browser.
+When the `persistence` feature is enabled on native targets, OIDC refresh tokens are stored in the native OS keyring on a best-effort basis. On the next login attempt, the crate tries the stored refresh token before opening a browser.
 
 ### Browser OIDC
 
 Browser OIDC uses browser redirects:
 
-- store temporary OIDC pending state in `sessionStorage`
+- store temporary OIDC pending state in `sessionStorage` with a short TTL
 - redirect with `window.location`
 - resume the callback after reload
 - exchange the authorization code for a token response
 - clean callback parameters from the browser URL
+- resume callbacks automatically when `StdbAuthPlugin::auto_resume_browser_callback` is enabled
 
 Persistent browser refresh-token storage is intentionally not exposed yet. This is because it is insecure to store refresh tokens in via browser Storage APIs.
 
@@ -106,6 +107,15 @@ Steam support is native-only and scoped to SpacetimeAuth's Steam ticket exchange
 
 Steam does not use persisted refresh-token recovery. This is because it is native and doesn't require a web browser callback loop to work.
 
+## Transport configuration
+
+`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints and applies a 10-second token request timeout. The endpoint URLs are not configurable.
+
+| Endpoint | URL |
+|---|---|
+| Authorization | `https://auth.spacetimedb.com/oidc/auth` |
+| Token | `https://auth.spacetimedb.com/oidc/token` |
+
 ## Commands
 
 Use `StdbAuthCommands` from normal Bevy systems to manage auth state.
@@ -115,8 +125,8 @@ Command methods return `Result<(), StdbAuthCommandError>` when a request cannot 
 | Method | Behavior |
 |---|---|
 | `login` | Starts a login flow using `StdbLoginOptions` |
-| `logout` | Clears the current session and runs provider logout when supported |
-| `refresh_now` | Requests an immediate token refresh for the current session |
+| `logout` | Clears the current session and ends the SpacetimeAuth provider session by default |
+| `refresh_now` | Requests an immediate token refresh when refresh credentials are available |
 | `cancel_pending` | Clears local pending auth task state when possible |
 
 ```rust
@@ -128,6 +138,14 @@ fn logout(mut auth: StdbAuthCommands) {
     }
 }
 ```
+
+`StdbLogoutOptions::default()` ends the SpacetimeAuth provider session through `https://auth.spacetimedb.com/oidc/session/end` and retains stored refresh credentials. Set `end_provider_session` to `false` for local-only logout. Set `clear_stored_credentials` to clear native keyring credentials when the `persistence` feature is enabled.
+
+## Token refresh
+
+Sessions with refresh credentials can be refreshed manually through `StdbAuthCommands::refresh_now`. When `StdbAuthPlugin::auto_refresh` is enabled, the plugin requests a refresh before expiration using `StdbAuthPlugin::refresh_buffer`.
+
+If SpacetimeAuth returns a rotated refresh token, the crate replaces the stored credential material and updates native keyring persistence when enabled. If the refresh response omits a refresh token, the existing refresh token is retained.
 
 ## Session resource
 
@@ -149,12 +167,13 @@ fn read_auth_session(session: Option<Res<StdbAuthSession>>) {
 - access token
 - token type
 - optional expiration instant
-- optional refresh token
+- whether refresh credentials are available
 - optional scope string
-- optional ID token
 - optional client ID
 - session source kind
 - optional post-logout redirect URI
+
+Refresh tokens and raw OIDC ID tokens are kept in internal credential resources instead of `StdbAuthSession` or lifecycle messages.
 
 ## Messages
 
@@ -216,7 +235,7 @@ bevy_stdb_auth = { version = "*", default-features = false, features = ["oidc", 
 bevy_stdb_auth = { version = "*", default-features = false, features = ["oidc", "browser"] }
 ```
 
-The `steam` and `persistence` features are native-only. Browser builds should not enable them.
+The `steam` and `persistence` features are native-only and are rejected on `wasm32` targets. Browser OIDC builds must enable `oidc` and `browser` together with `default-features = false`. Native all-feature builds still use the native OIDC implementation even when the `browser` feature is enabled.
 
 ## Compatibility
 
