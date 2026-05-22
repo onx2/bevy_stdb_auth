@@ -6,6 +6,7 @@ use crate::{
     transport::StdbAuthTransportConfig,
 };
 use bevy_tasks::{IoTaskPool, Task, TaskPool};
+use std::collections::BTreeMap;
 
 /// Spawns a token refresh request for the active [`StdbAuthSession`].
 pub(crate) fn spawn_refresh_session_task(
@@ -17,7 +18,6 @@ pub(crate) fn spawn_refresh_session_task(
         .spawn(async move { refresh_session(session, refresh_token, transport_config).await })
 }
 
-#[cfg(feature = "oidc")]
 pub(crate) async fn refresh_session(
     session: StdbAuthSession,
     refresh_token: String,
@@ -26,7 +26,7 @@ pub(crate) async fn refresh_session(
     let client_id = session.client_id.clone().ok_or_else(|| {
         StdbAuthError::InvalidConfig("refresh requires a session client ID".to_string())
     })?;
-    let token_form = crate::oidc::common::refresh_token_form(&client_id, &refresh_token)?;
+    let token_form = refresh_token_form(&client_id, &refresh_token)?;
     let token = exchange_refresh_token(&transport_config, token_form).await?;
     let parts = token.into_session_parts(
         Some(client_id),
@@ -37,21 +37,43 @@ pub(crate) async fn refresh_session(
     Ok(retain_refresh_context(session, refresh_token, parts))
 }
 
-#[cfg(not(feature = "oidc"))]
-pub(crate) async fn refresh_session(
-    _session: StdbAuthSession,
-    _refresh_token: String,
-    _transport_config: StdbAuthTransportConfig,
-) -> Result<StdbAuthSessionParts, StdbAuthError> {
-    Err(StdbAuthError::Unsupported(
-        "token refresh requires the `oidc` feature".to_string(),
-    ))
+struct RefreshTokenRequestForm {
+    params: BTreeMap<String, String>,
 }
 
-#[cfg(all(feature = "oidc", not(target_arch = "wasm32")))]
+fn refresh_token_form(
+    client_id: &str,
+    refresh_token: &str,
+) -> Result<RefreshTokenRequestForm, StdbAuthError> {
+    let mut params = BTreeMap::new();
+    params.insert("grant_type".to_string(), "refresh_token".to_string());
+    params.insert(
+        "refresh_token".to_string(),
+        require_non_empty(refresh_token, "refresh_token")?,
+    );
+    params.insert(
+        "client_id".to_string(),
+        require_non_empty(client_id, "client_id")?,
+    );
+
+    Ok(RefreshTokenRequestForm { params })
+}
+
+fn require_non_empty(value: &str, field: &'static str) -> Result<String, StdbAuthError> {
+    let value = value.trim().to_string();
+    if value.is_empty() {
+        return Err(StdbAuthError::InvalidConfig(format!(
+            "`{field}` must not be empty"
+        )));
+    }
+
+    Ok(value)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 async fn exchange_refresh_token(
     transport_config: &StdbAuthTransportConfig,
-    token_form: crate::oidc::common::StdbOidcTokenRequestForm,
+    token_form: RefreshTokenRequestForm,
 ) -> Result<crate::token::StdbTokenResponse, StdbAuthError> {
     let client = transport_config.blocking_token_client()?;
     let response = client
@@ -67,10 +89,10 @@ async fn exchange_refresh_token(
         .map_err(StdbAuthError::from)
 }
 
-#[cfg(all(feature = "oidc", target_arch = "wasm32"))]
+#[cfg(target_arch = "wasm32")]
 async fn exchange_refresh_token(
     transport_config: &StdbAuthTransportConfig,
-    token_form: crate::oidc::common::StdbOidcTokenRequestForm,
+    token_form: RefreshTokenRequestForm,
 ) -> Result<crate::token::StdbTokenResponse, StdbAuthError> {
     let client = transport_config.token_client()?;
     let response = client
@@ -88,7 +110,6 @@ async fn exchange_refresh_token(
         .map_err(StdbAuthError::from)
 }
 
-#[cfg(feature = "oidc")]
 fn retain_refresh_context(
     previous_session: StdbAuthSession,
     previous_refresh_token: String,
@@ -106,7 +127,7 @@ fn retain_refresh_context(
     parts
 }
 
-#[cfg(all(test, feature = "oidc"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
@@ -125,6 +146,25 @@ mod tests {
             source: StdbAuthSessionSource::Oidc,
             post_logout_redirect_uri: None,
         }
+    }
+
+    #[test]
+    fn refresh_token_form_contains_required_fields() {
+        let form =
+            refresh_token_form("client", "refresh").expect("refresh token form should be valid");
+
+        assert_eq!(
+            form.params.get("grant_type").map(String::as_str),
+            Some("refresh_token")
+        );
+        assert_eq!(
+            form.params.get("client_id").map(String::as_str),
+            Some("client")
+        );
+        assert_eq!(
+            form.params.get("refresh_token").map(String::as_str),
+            Some("refresh")
+        );
     }
 
     #[test]

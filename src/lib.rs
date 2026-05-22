@@ -56,7 +56,7 @@ pub mod prelude {
             StdbAuthLogoutSucceededMessage, StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage,
             StdbAuthTokenRefreshedMessage,
         },
-        plugin::StdbAuthPlugin,
+        plugin::{StdbAuthPlugin, StdbAutoRefreshOptions},
         session::{StdbAuthSession, StdbAuthSessionSource},
         source::StdbAuthSource,
         transport::StdbAuthTransportConfig,

@@ -269,7 +269,10 @@ impl Command for StartRefreshCommand {
             .unwrap_or_default();
         let task =
             crate::refresh::spawn_refresh_session_task(session, refresh_token, transport_config);
-        world.insert_resource(PendingAuthOperation::Refresh(task));
+        world.insert_resource(PendingAuthOperation::Refresh {
+            task,
+            automatic: false,
+        });
     }
 }
 

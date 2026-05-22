@@ -9,7 +9,6 @@ use std::collections::BTreeMap;
 use url::Url;
 
 const AUTHORIZATION_CODE_GRANT_TYPE: &str = "authorization_code";
-const REFRESH_TOKEN_GRANT_TYPE: &str = "refresh_token";
 
 /// An OIDC authorization request and its local validation state.
 pub(crate) struct StdbOidcAuthorizationRequest {
@@ -133,28 +132,6 @@ pub(crate) fn authorization_code_token_form(
     params.insert(
         "code_verifier".to_string(),
         require_non_empty(pkce_verifier, "code_verifier")?,
-    );
-
-    Ok(StdbOidcTokenRequestForm { params })
-}
-
-/// Builds a refresh-token request form.
-pub(crate) fn refresh_token_form(
-    client_id: &str,
-    refresh_token: &str,
-) -> Result<StdbOidcTokenRequestForm, StdbAuthError> {
-    let mut params = BTreeMap::new();
-    params.insert(
-        "grant_type".to_string(),
-        REFRESH_TOKEN_GRANT_TYPE.to_string(),
-    );
-    params.insert(
-        "refresh_token".to_string(),
-        require_non_empty(refresh_token, "refresh_token")?,
-    );
-    params.insert(
-        "client_id".to_string(),
-        require_non_empty(client_id, "client_id")?,
     );
 
     Ok(StdbOidcTokenRequestForm { params })
@@ -313,23 +290,6 @@ mod tests {
         assert_eq!(
             form.get("redirect_uri").map(String::as_str),
             Some("http://127.0.0.1:3000/callback")
-        );
-    }
-
-    #[test]
-    fn refresh_token_form_contains_required_fields() {
-        let form =
-            refresh_token_form("client", "refresh").expect("refresh token form should be valid");
-        let form = form_map(form);
-
-        assert_eq!(
-            form.get("grant_type").map(String::as_str),
-            Some("refresh_token")
-        );
-        assert_eq!(form.get("client_id").map(String::as_str), Some("client"));
-        assert_eq!(
-            form.get("refresh_token").map(String::as_str),
-            Some("refresh")
         );
     }
 }

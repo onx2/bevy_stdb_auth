@@ -255,6 +255,12 @@ fn validate_native_redirect_uri(redirect_uri: &str) -> Result<Url, StdbAuthError
         ));
     }
 
+    if redirect_uri.query().is_some() {
+        return Err(StdbAuthError::InvalidConfig(
+            "native OIDC `redirect_uri` must not include a query string".to_string(),
+        ));
+    }
+
     if redirect_uri.fragment().is_some() {
         return Err(StdbAuthError::InvalidConfig(
             "native OIDC `redirect_uri` must not include a fragment".to_string(),
@@ -328,6 +334,13 @@ mod tests {
     #[test]
     fn native_redirect_uri_rejects_non_loopback_hosts() {
         let result = validate_native_redirect_uri("http://example.com:3000/callback");
+
+        assert!(matches!(result, Err(StdbAuthError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn native_redirect_uri_rejects_query_string() {
+        let result = validate_native_redirect_uri("http://127.0.0.1:3000/callback?route=auth");
 
         assert!(matches!(result, Err(StdbAuthError::InvalidConfig(_))));
     }

@@ -182,8 +182,20 @@ fn clean_browser_callback_url() -> Result<(), StdbAuthError> {
     let mut url = Url::parse(&href).map_err(|error| {
         StdbAuthError::InvalidOidcCallback(format!("browser callback URL is invalid: {error}"))
     })?;
+    let preserved_query_params = url
+        .query_pairs()
+        .filter(|(key, _value)| !is_oidc_callback_param(key))
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect::<Vec<_>>();
     url.set_query(None);
-    url.set_fragment(None);
+
+    if !preserved_query_params.is_empty() {
+        url.query_pairs_mut().extend_pairs(
+            preserved_query_params
+                .iter()
+                .map(|(key, value)| (key.as_str(), value.as_str())),
+        );
+    }
 
     let history_state = js_sys::Object::new();
 
@@ -196,6 +208,13 @@ fn clean_browser_callback_url() -> Result<(), StdbAuthError> {
         .map_err(|error| {
             StdbAuthError::Internal(format_js_error("failed to clean callback URL", error))
         })
+}
+
+fn is_oidc_callback_param(param: &str) -> bool {
+    matches!(
+        param,
+        "code" | "state" | "error" | "error_description" | "error_uri" | "session_state" | "iss"
+    )
 }
 
 fn browser_location_href() -> Result<String, StdbAuthError> {

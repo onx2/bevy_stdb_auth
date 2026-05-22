@@ -73,7 +73,7 @@ fn on_auth_succeeded(mut messages: ReadStdbAuthSucceededMessage) {
 
 ### Native OIDC
 
-Native OIDC uses the system browser and a loopback redirect listener. The configured redirect URI must use `http`, a loopback host, and a non-zero explicit port.
+Native OIDC uses the system browser and a loopback redirect listener. The configured redirect URI must use `http`, a loopback host, a non-zero explicit port, and no query string.
 
 - build authorization URL with PKCE, CSRF state, and OIDC nonce
 - open the system browser
@@ -92,7 +92,7 @@ Browser OIDC uses browser redirects:
 - resume the callback after reload
 - exchange the authorization code for a token response
 - clean callback parameters from the browser URL
-- resume callbacks automatically when `StdbAuthPlugin::auto_resume_browser_callback` is enabled
+- resume callbacks automatically when a pending browser authorization is detected
 
 Persistent browser refresh-token storage is intentionally not exposed yet. This is because it is insecure to store refresh tokens in via browser Storage APIs.
 
@@ -143,7 +143,9 @@ fn logout(mut auth: StdbAuthCommands) {
 
 ## Token refresh
 
-Sessions with refresh credentials can be refreshed manually through `StdbAuthCommands::refresh_now`. When `StdbAuthPlugin::auto_refresh` is enabled, the plugin requests a refresh before expiration using `StdbAuthPlugin::refresh_buffer`.
+Sessions with refresh credentials can be refreshed manually through `StdbAuthCommands::refresh_now`. When `StdbAuthPlugin::auto_refresh` is `Some`, the plugin requests a refresh before expiration using `StdbAutoRefreshOptions::refresh_buffer`.
+
+`StdbAuthPlugin::default()` enables automatic refresh with retry backoff. Set `auto_refresh` to `None` to disable it, or provide `StdbAutoRefreshOptions` to configure the refresh buffer, retry delay, max attempts, backoff factor, and max retry delay.
 
 If SpacetimeAuth returns a rotated refresh token, the crate replaces the stored credential material and updates native keyring persistence when enabled. If the refresh response omits a refresh token, the existing refresh token is retained.
 
