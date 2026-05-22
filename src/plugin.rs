@@ -6,6 +6,7 @@ use crate::{
         StdbAuthTokenRefreshedMessage,
     },
     session::{StdbAuthCredentialMaterial, StdbAuthSession, StdbAuthSessionParts, clear_session},
+    set::StdbAuthSet,
     transport::StdbAuthTransportConfig,
 };
 use bevy_app::{App, Plugin, PreUpdate};
@@ -86,25 +87,31 @@ impl Plugin for StdbAuthPlugin {
         app.add_message::<StdbAuthLogoutSucceededMessage>();
         app.add_message::<StdbAuthLogoutFailedMessage>();
 
-        #[cfg(all(feature = "oidc", feature = "browser", target_arch = "wasm32"))]
-        app.add_systems(
+        app.configure_sets(
             PreUpdate,
             (
-                request_browser_callback_resume,
-                request_auto_refresh,
-                poll_pending_auth.run_if(resource_exists::<PendingAuthOperation>),
+                StdbAuthSet::Command,
+                StdbAuthSet::BrowserCallback,
+                StdbAuthSet::AutoRefresh,
+                StdbAuthSet::Poll,
             )
                 .chain(),
         );
 
-        #[cfg(not(all(feature = "oidc", feature = "browser", target_arch = "wasm32")))]
+        #[cfg(all(feature = "oidc", feature = "browser", target_arch = "wasm32"))]
+        app.add_systems(
+            PreUpdate,
+            request_browser_callback_resume.in_set(StdbAuthSet::BrowserCallback),
+        );
+
         app.add_systems(
             PreUpdate,
             (
-                request_auto_refresh,
-                poll_pending_auth.run_if(resource_exists::<PendingAuthOperation>),
-            )
-                .chain(),
+                request_auto_refresh.in_set(StdbAuthSet::AutoRefresh),
+                poll_pending_auth
+                    .run_if(resource_exists::<PendingAuthOperation>)
+                    .in_set(StdbAuthSet::Poll),
+            ),
         );
     }
 }

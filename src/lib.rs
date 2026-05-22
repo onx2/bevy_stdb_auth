@@ -24,6 +24,7 @@ mod message;
 mod plugin;
 mod refresh;
 mod session;
+mod set;
 mod source;
 mod token;
 mod transport;
@@ -58,6 +59,7 @@ pub mod prelude {
         },
         plugin::{StdbAuthPlugin, StdbAutoRefreshOptions},
         session::{StdbAuthSession, StdbAuthSessionSource},
+        set::StdbAuthSet,
         source::StdbAuthSource,
     };
 }
