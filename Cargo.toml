@@ -12,12 +12,21 @@ documentation = "https://docs.rs/bevy_stdb_auth"
 keywords = ["bevy", "authentication", "ecs", "auth", "token"]
 categories = ["game-development"]
 exclude = [
-    "examples/",
     ".github/",
 ]
 
 [badges]
 maintenance = { status = "actively-developed" }
+
+[[example]]
+name = "oidc"
+path = "examples/oidc/main.rs"
+required-features = ["oidc"]
+
+[[example]]
+name = "steam"
+path = "examples/steam/main.rs"
+required-features = ["steam"]
 
 [dependencies]
 bevy_app = "0.18"
