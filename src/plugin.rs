@@ -86,10 +86,21 @@ impl Plugin for StdbAuthPlugin {
         app.add_message::<StdbAuthLogoutSucceededMessage>();
         app.add_message::<StdbAuthLogoutFailedMessage>();
 
+        #[cfg(all(feature = "oidc", feature = "browser", target_arch = "wasm32"))]
         app.add_systems(
             PreUpdate,
             (
                 request_browser_callback_resume,
+                request_auto_refresh,
+                poll_pending_auth.run_if(resource_exists::<PendingAuthOperation>),
+            )
+                .chain(),
+        );
+
+        #[cfg(not(all(feature = "oidc", feature = "browser", target_arch = "wasm32")))]
+        app.add_systems(
+            PreUpdate,
+            (
                 request_auto_refresh,
                 poll_pending_auth.run_if(resource_exists::<PendingAuthOperation>),
             )
@@ -140,9 +151,6 @@ fn request_browser_callback_resume(world: &mut World) {
         .spawn(async move { crate::oidc::browser::resume_session(transport_config).await });
     world.insert_resource(PendingAuthOperation::Login(task));
 }
-
-#[cfg(not(all(feature = "oidc", feature = "browser", target_arch = "wasm32")))]
-fn request_browser_callback_resume(_world: &mut World) {}
 
 fn request_auto_refresh(world: &mut World) {
     if world.contains_resource::<PendingAuthOperation>() {
