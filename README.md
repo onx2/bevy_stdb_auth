@@ -1,6 +1,6 @@
 # bevy_stdb_auth
 
-A [Bevy](https://bevy.org/) integration for [SpacetimeAuth](https://spacetimedb.com/docs/core-concepts/authentication/spacetimeauth/) token sessions.
+A [Bevy](https://bevy.org/)-native integration for the [SpacetimeAuth](https://spacetimedb.com/docs/core-concepts/authentication/spacetimeauth/) issuer.
 
 [![crates.io](https://img.shields.io/crates/v/bevy_stdb_auth)](https://crates.io/crates/bevy_stdb_auth)
 ![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen.svg)
@@ -17,7 +17,7 @@ _Please enjoy this useless AI generated image based on the README contents of th
 
 `bevy_stdb_auth` adapts SpacetimeAuth login, refresh, logout, and session lifecycle state into Bevy-style resources, systems, plugins, commands, and messages.
 
-This crate is intentionally scoped to SpacetimeAuth. It does not depend on `bevy_stdb`, and it does not manage SpacetimeDB connections directly. Applications decide how to use auth tokens, including passing them to `bevy_stdb`, HTTP clients, backend APIs, or game services.
+This crate is intentionally scoped to SpacetimeAuth and does not manage SpacetimeDB connections directly. Applications decide how to use auth tokens, including passing them to [bevy_stdb](https://github.com/onx2/bevy_stdb), directly with the SpacetimeDB SDK, HTTP clients, or some other recipient.
 
 ## Features
 
@@ -139,7 +139,7 @@ fn logout(mut auth: StdbAuthCommands) {
 }
 ```
 
-`StdbLogoutOptions::default()` ends the SpacetimeAuth provider session through `https://auth.spacetimedb.com/oidc/session/end` and retains stored refresh credentials. Set `end_provider_session` to `false` for local-only logout. Set `clear_stored_credentials` to clear native keyring credentials when the `persistence` feature is enabled.
+`StdbLogoutOptions::default()` ends the SpacetimeAuth provider session through `https://auth.spacetimedb.com/oidc/session/end` and retains persisted refresh credentials. Set `end_provider_session` to `false` for local-only logout. Set `forget_device` to remove persisted refresh credentials from this device when the `persistence` feature is enabled.
 
 ## Token refresh
 

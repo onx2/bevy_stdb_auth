@@ -70,15 +70,15 @@ impl StdbLoginOptions {
 pub struct StdbLogoutOptions {
     /// Whether the SpacetimeAuth provider session should be ended.
     pub end_provider_session: bool,
-    /// Whether provider-backed local credentials should be cleared.
-    pub clear_stored_credentials: bool,
+    /// Whether persisted refresh credentials should be removed from this device.
+    pub forget_device: bool,
 }
 
 impl Default for StdbLogoutOptions {
     fn default() -> Self {
         Self {
             end_provider_session: true,
-            clear_stored_credentials: false,
+            forget_device: false,
         }
     }
 }
@@ -210,7 +210,7 @@ impl Command for StartLogoutCommand {
             .unwrap_or_default();
         let options = self.options;
         let task = IoTaskPool::get_or_init(TaskPool::default).spawn(async move {
-            if options.clear_stored_credentials {
+            if options.forget_device {
                 clear_persisted_credentials_best_effort(&session);
             }
 
@@ -425,7 +425,7 @@ mod tests {
         let options = StdbLogoutOptions::default();
 
         assert!(options.end_provider_session);
-        assert!(!options.clear_stored_credentials);
+        assert!(!options.forget_device);
     }
 
     #[test]
