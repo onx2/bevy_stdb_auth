@@ -2,6 +2,7 @@ use crate::error::StdbAuthError;
 use bevy_ecs::prelude::Resource;
 use std::time::Duration;
 
+#[cfg(feature = "oidc")]
 const SPACETIMEAUTH_AUTHORIZATION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/auth";
 const SPACETIMEAUTH_TOKEN_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/token";
 const SPACETIMEAUTH_END_SESSION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/session/end";
@@ -9,13 +10,14 @@ const DEFAULT_TOKEN_REQUEST_TIMEOUT_SECS: u64 = 10;
 
 /// Configures HTTP transport for SpacetimeAuth provider requests.
 #[derive(Clone, Debug, Resource)]
-pub struct StdbAuthTransportConfig {
+pub(crate) struct StdbAuthTransportConfig {
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     token_request_timeout: Duration,
 }
 
 impl StdbAuthTransportConfig {
     /// Creates a validated [`StdbAuthTransportConfig`].
-    pub fn try_new(token_request_timeout: Duration) -> Result<Self, StdbAuthError> {
+    pub(crate) fn try_new(token_request_timeout: Duration) -> Result<Self, StdbAuthError> {
         if token_request_timeout.is_zero() {
             return Err(StdbAuthError::InvalidConfig(
                 "token request timeout must be greater than zero".to_string(),
@@ -28,28 +30,24 @@ impl StdbAuthTransportConfig {
     }
 
     /// Returns the SpacetimeAuth authorization endpoint URL.
-    pub fn authorization_endpoint_url(&self) -> &'static str {
+    #[cfg(feature = "oidc")]
+    pub(crate) fn authorization_endpoint_url(&self) -> &'static str {
         SPACETIMEAUTH_AUTHORIZATION_ENDPOINT
     }
 
     /// Returns the SpacetimeAuth token endpoint URL.
-    pub fn token_endpoint_url(&self) -> &'static str {
+    pub(crate) fn token_endpoint_url(&self) -> &'static str {
         SPACETIMEAUTH_TOKEN_ENDPOINT
     }
 
     /// Returns the SpacetimeAuth end-session endpoint URL.
-    pub fn end_session_endpoint_url(&self) -> &'static str {
+    pub(crate) fn end_session_endpoint_url(&self) -> &'static str {
         SPACETIMEAUTH_END_SESSION_ENDPOINT
     }
 
     /// Returns the default token request timeout.
-    pub fn default_token_request_timeout() -> Duration {
+    pub(crate) fn default_token_request_timeout() -> Duration {
         Duration::from_secs(DEFAULT_TOKEN_REQUEST_TIMEOUT_SECS)
-    }
-
-    /// Returns the configured token request timeout.
-    pub fn token_request_timeout(&self) -> Duration {
-        self.token_request_timeout
     }
 
     /// Builds a native blocking token request client.

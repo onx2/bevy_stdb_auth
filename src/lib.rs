@@ -59,6 +59,5 @@ pub mod prelude {
         plugin::{StdbAuthPlugin, StdbAutoRefreshOptions},
         session::{StdbAuthSession, StdbAuthSessionSource},
         source::StdbAuthSource,
-        transport::StdbAuthTransportConfig,
     };
 }

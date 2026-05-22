@@ -1,7 +1,5 @@
 //! Shared OIDC request construction and token normalization.
 
-#![allow(dead_code)]
-
 use super::StdbOidcAuthOptions;
 use crate::{error::StdbAuthError, transport::StdbAuthTransportConfig};
 use oauth2::{CsrfToken, PkceCodeChallenge};
@@ -11,26 +9,26 @@ use url::Url;
 const AUTHORIZATION_CODE_GRANT_TYPE: &str = "authorization_code";
 
 /// An OIDC authorization request and its local validation state.
-pub(crate) struct StdbOidcAuthorizationRequest {
-    pub(crate) authorization_url: Url,
-    pub(crate) state: String,
-    pub(crate) nonce: String,
-    pub(crate) pkce_verifier: String,
+pub(super) struct StdbOidcAuthorizationRequest {
+    pub(super) authorization_url: Url,
+    pub(super) state: String,
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    pub(super) nonce: String,
+    pub(super) pkce_verifier: String,
 }
 
 /// An authorization-code callback returned by SpacetimeAuth.
-pub(crate) struct StdbOidcAuthorizationCode {
-    pub(crate) code: String,
-    pub(crate) state: String,
+pub(super) struct StdbOidcAuthorizationCode {
+    pub(super) code: String,
 }
 
 /// A token endpoint form request.
-pub(crate) struct StdbOidcTokenRequestForm {
-    pub(crate) params: BTreeMap<String, String>,
+pub(super) struct StdbOidcTokenRequestForm {
+    pub(super) params: BTreeMap<String, String>,
 }
 
 /// Builds a SpacetimeAuth OIDC authorization URL.
-pub(crate) fn build_authorization_request(
+pub(super) fn build_authorization_request(
     options: &StdbOidcAuthOptions,
     transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbOidcAuthorizationRequest, StdbAuthError> {
@@ -71,7 +69,7 @@ pub(crate) fn build_authorization_request(
 }
 
 /// Parses a SpacetimeAuth OIDC callback URL.
-pub(crate) fn parse_callback_url(
+pub(super) fn parse_callback_url(
     callback_url: &str,
     expected_state: &str,
 ) -> Result<StdbOidcAuthorizationCode, StdbAuthError> {
@@ -106,11 +104,11 @@ pub(crate) fn parse_callback_url(
         ));
     }
 
-    Ok(StdbOidcAuthorizationCode { code, state })
+    Ok(StdbOidcAuthorizationCode { code })
 }
 
 /// Builds an authorization-code token request form.
-pub(crate) fn authorization_code_token_form(
+pub(super) fn authorization_code_token_form(
     options: &StdbOidcAuthOptions,
     code: &str,
     pkce_verifier: &str,
@@ -248,7 +246,6 @@ mod tests {
         .expect("callback should be valid");
 
         assert_eq!(callback.code, "abc");
-        assert_eq!(callback.state, "state");
     }
 
     #[test]

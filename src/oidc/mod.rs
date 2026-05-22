@@ -1,5 +1,5 @@
 //! OIDC authorization-code support for SpacetimeAuth.
-pub(crate) mod common;
+mod common;
 #[cfg(all(feature = "persistence", not(target_arch = "wasm32")))]
 pub(crate) mod persistence;
 
@@ -26,7 +26,7 @@ pub enum StdbOidcPrompt {
 
 impl StdbOidcPrompt {
     /// Returns the OIDC `prompt` parameter value.
-    pub fn as_param(&self) -> Option<&'static str> {
+    fn as_param(&self) -> Option<&'static str> {
         match self {
             Self::None => None,
             Self::Login => Some("login"),
