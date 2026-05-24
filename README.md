@@ -119,7 +119,7 @@ Steam does not use persisted refresh-token recovery. This is because it is nativ
 
 Use `StdbAuthCommands` from normal Bevy systems to manage auth state.
 
-Command methods return `Result<(), StdbAuthCommandError>` when a request cannot be accepted against the currently visible world state. Broader auth lifecycle failures use `StdbAuthError`, and command rejections convert into `StdbAuthError::Command` when a unified error type is needed. Deferred same-frame rejections emit `StdbAuthCommandRejectedMessage`.
+Command methods return `Result<(), StdbAuthCommandError>` when a request cannot be accepted against the currently visible world state. Broader auth lifecycle failures use `StdbAuthError`, and command rejections convert into `StdbAuthError::Command` when a unified error type is needed. Deferred same-frame rejections are available through `ReadStdbAuthCommandRejectedMessage`.
 
 | Method | Behavior |
 |---|---|
@@ -176,19 +176,19 @@ fn read_auth_session(session: Option<Res<StdbAuthSession>>) {
 
 Refresh tokens and raw OIDC ID tokens are kept in internal credential resources instead of `StdbAuthSession` or lifecycle messages.
 
-## Messages
+## Lifecycle readers
 
-`bevy_stdb_auth` emits Bevy messages for auth lifecycle events:
+`bevy_stdb_auth` emits internal Bevy messages for auth lifecycle events. Applications read them through public reader aliases:
 
-- `StdbAuthSucceededMessage`
-- `StdbAuthFailedMessage`
-- `StdbAuthCommandRejectedMessage`
-- `StdbAuthTokenRefreshedMessage`
-- `StdbAuthRefreshFailedMessage`
-- `StdbAuthLogoutSucceededMessage`
-- `StdbAuthLogoutFailedMessage`
+- `ReadStdbAuthSucceededMessage`
+- `ReadStdbAuthFailedMessage`
+- `ReadStdbAuthCommandRejectedMessage`
+- `ReadStdbAuthTokenRefreshedMessage`
+- `ReadStdbAuthRefreshFailedMessage`
+- `ReadStdbAuthLogoutSucceededMessage`
+- `ReadStdbAuthLogoutFailedMessage`
 
-Applications can listen to these messages to route UI, update connection tokens, reconnect clients, or clear local game state.
+Applications can use these readers to route UI, update connection tokens, reconnect clients, or clear local game state. The concrete message types are intentionally not exported; auth state changes should be requested through `StdbAuthCommands`.
 
 ## Integrating with `bevy_stdb`
 

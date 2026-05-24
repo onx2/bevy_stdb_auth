@@ -5,28 +5,28 @@ use crate::message::{
 };
 use bevy_ecs::prelude::MessageReader;
 
-/// A [`MessageReader`] for [`StdbAuthSucceededMessage`].
+/// Reads successful authentication messages.
 pub type ReadStdbAuthSucceededMessage<'w, 's> = MessageReader<'w, 's, StdbAuthSucceededMessage>;
 
-/// A [`MessageReader`] for [`StdbAuthFailedMessage`].
+/// Reads authentication failure messages.
 pub type ReadStdbAuthFailedMessage<'w, 's> = MessageReader<'w, 's, StdbAuthFailedMessage>;
 
-/// A [`MessageReader`] for [`StdbAuthCommandRejectedMessage`].
+/// Reads rejected authentication command messages.
 pub type ReadStdbAuthCommandRejectedMessage<'w, 's> =
     MessageReader<'w, 's, StdbAuthCommandRejectedMessage>;
 
-/// A [`MessageReader`] for [`StdbAuthTokenRefreshedMessage`].
+/// Reads successful token refresh messages.
 pub type ReadStdbAuthTokenRefreshedMessage<'w, 's> =
     MessageReader<'w, 's, StdbAuthTokenRefreshedMessage>;
 
-/// A [`MessageReader`] for [`StdbAuthRefreshFailedMessage`].
+/// Reads token refresh failure messages.
 pub type ReadStdbAuthRefreshFailedMessage<'w, 's> =
     MessageReader<'w, 's, StdbAuthRefreshFailedMessage>;
 
-/// A [`MessageReader`] for [`StdbAuthLogoutSucceededMessage`].
+/// Reads successful logout messages.
 pub type ReadStdbAuthLogoutSucceededMessage<'w, 's> =
     MessageReader<'w, 's, StdbAuthLogoutSucceededMessage>;
 
-/// A [`MessageReader`] for [`StdbAuthLogoutFailedMessage`].
+/// Reads logout failure messages.
 pub type ReadStdbAuthLogoutFailedMessage<'w, 's> =
     MessageReader<'w, 's, StdbAuthLogoutFailedMessage>;
