@@ -10,12 +10,14 @@ const SPACETIMEAUTH_TOKEN_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/to
 const SPACETIMEAUTH_END_SESSION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/session/end";
 
 /// Configures HTTP transport for SpacetimeAuth provider requests.
+#[cfg_attr(target_arch = "wasm32", derive(Default))]
 #[derive(Clone, Debug, Resource)]
 pub(crate) struct StdbAuthTransportConfig {
     #[cfg(not(target_arch = "wasm32"))]
     token_request_timeout: Option<Duration>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for StdbAuthTransportConfig {
     fn default() -> Self {
         Self {
@@ -90,6 +92,7 @@ mod tests {
     fn static_spacetimeauth_endpoints_are_used() {
         let config = StdbAuthTransportConfig::default();
 
+        #[cfg(feature = "oidc")]
         assert_eq!(
             config.authorization_endpoint_url(),
             "https://auth.spacetimedb.com/oidc/auth"

@@ -413,6 +413,7 @@ mod tests {
         assert!(!options.forget_device);
     }
 
+    #[cfg(feature = "oidc")]
     #[test]
     fn end_session_url_contains_logout_context() {
         let mut session = session_with_refresh_credentials();
@@ -442,6 +443,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "oidc")]
     #[test]
     fn end_session_url_omits_empty_optional_context() {
         let mut session = session_with_refresh_credentials();

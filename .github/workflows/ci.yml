@@ -32,7 +32,7 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
-  native:
+  native-default:
     name: Native default (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -57,49 +57,37 @@ jobs:
       - name: Cache cargo registry and build artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Run cargo check
+      - name: Check default native build
         run: cargo check --all-targets --locked
 
-      - name: Run clippy
+      - name: Run default native clippy
         run: cargo clippy --all-targets --locked -- -D warnings
 
-      - name: Run tests
+      - name: Run default native tests
         run: cargo test --all-targets --locked
 
-      - name: Build docs
+      - name: Build default native docs
         run: cargo doc --no-deps --locked
 
-  browser:
-    name: Browser wasm
+  native-feature-matrix:
+    name: Native features (${{ matrix.name }})
     runs-on: ubuntu-latest
-    env:
-      RUSTDOCFLAGS: -D warnings
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install stable Rust with wasm target
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-          targets: wasm32-unknown-unknown
-
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo check
-        run: cargo check --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked
-
-      - name: Run clippy
-        run: cargo clippy --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked -- -D warnings
-
-      - name: Build docs
-        run: cargo doc --target wasm32-unknown-unknown --no-deps --no-default-features --features oidc,browser --locked
-
-  feature-matrix:
-    name: Feature matrix
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: oidc
+            args: --all-targets --no-default-features --features oidc
+          - name: steam
+            args: --all-targets --no-default-features --features steam
+          - name: oidc-persistence
+            args: --all-targets --no-default-features --features oidc,persistence
+          - name: oidc-steam
+            args: --all-targets --no-default-features --features oidc,steam
+          - name: oidc-steam-persistence
+            args: --all-targets --no-default-features --features oidc,steam,persistence
+          - name: all-features
+            args: --all-targets --all-features
     env:
       RUSTDOCFLAGS: -D warnings
 
@@ -120,20 +108,56 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
 
-      - name: Check OIDC-only native build
-        run: cargo check --no-default-features --features oidc --locked
+      - name: Check native feature set
+        run: cargo check ${{ matrix.args }} --locked
 
-      - name: Check Steam-only native build
-        run: cargo check --no-default-features --features steam --locked
+      - name: Run native feature-set clippy
+        run: cargo clippy ${{ matrix.args }} --locked -- -D warnings
 
-      - name: Check OIDC persistence native build
-        run: cargo check --no-default-features --features oidc,persistence --locked
+  browser:
+    name: Browser wasm
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
 
-      - name: Check native all-features build
-        run: cargo check --all-features --locked
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - name: Run all-features clippy
-        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Install stable Rust with wasm target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check browser wasm build
+        run: cargo check --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked
+
+      - name: Run browser wasm clippy
+        run: cargo clippy --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked -- -D warnings
+
+      - name: Build browser wasm docs
+        run: cargo doc --target wasm32-unknown-unknown --no-deps --no-default-features --features oidc,browser --locked
+
+  package:
+    name: Package dry run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Verify package contents and publishability
+        run: cargo publish --dry-run --locked
 
   msrv:
     name: MSRV check
@@ -144,16 +168,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install MSRV Rust
-        uses: dtolnay/rust-toolchain@1.93.0
+        uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: wasm32-unknown-unknown
 
       - name: Cache cargo registry and build artifacts
         uses: Swatinem/rust-cache@v2
 
-      # Install keyring dep for linux, used in OIDC auth
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
 
-      - name: Check crate on MSRV
+      - name: Check default feature set on MSRV
+        run: cargo check --all-targets --locked
+
+      - name: Check all native features on MSRV
         run: cargo check --all-targets --all-features --locked
+
+      - name: Check browser feature set on MSRV
+        run: cargo check --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked

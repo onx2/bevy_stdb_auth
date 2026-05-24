@@ -8,9 +8,6 @@ A [Bevy](https://bevy.org/)-native integration for the [SpacetimeAuth](https://s
 [![CI](https://github.com/onx2/bevy_stdb_auth/actions/workflows/ci.yml/badge.svg)](https://github.com/onx2/bevy_stdb_auth/actions/workflows/ci.yml?query=branch%3Amain)
 [![CodeQL](https://github.com/onx2/bevy_stdb_auth/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/onx2/bevy_stdb_auth/actions/workflows/github-code-scanning/codeql)
 
-![Useless AI generated image that kind of looks cool](https://github.com/user-attachments/assets/141a4b22-1cd7-4340-8c88-277fd6af6a19)
-_Please enjoy this useless AI generated image based on the README contents of this repo._
-
 
 
 ## Overview
@@ -25,9 +22,9 @@ This crate is intentionally scoped to SpacetimeAuth and does not manage Spacetim
 - **Command interface** for login, logout, manual refresh requests, and pending-operation cancellation through `StdbAuthCommands`
 - **Current auth state** through `StdbAuthSession`
 - **Lifecycle messages** for login, refresh, and logout
-- **SpacetimeAuth OIDC support** for native and browser clients through the `oidc` feature
-- **Native OIDC refresh-token persistence** through the `persistence` feature
-- **SpacetimeAuth Steam support** for native Steam ticket exchange through the `steam` feature
+- **SpacetimeAuth OIDC support** for native and browser clients through the default `oidc` feature
+- **Native OIDC refresh-token persistence** through the opt-in `persistence` feature
+- **SpacetimeAuth Steam support** for native Steam ticket exchange through the opt-in `steam` feature
 
 ## Example
 
@@ -39,18 +36,21 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(StdbAuthPlugin::default())
-        .add_systems(Startup, login_with_steam)
+        .add_systems(Startup, login_with_oidc)
         .add_systems(Update, on_auth_succeeded)
         .run();
 }
 
-fn login_with_steam(mut auth: StdbAuthCommands) {
-    if let Err(error) = auth.login(StdbLoginOptions::new(StdbAuthSource::Steam(
-        StdbSteamAuthOptions {
-            client_id: "my-client-id".to_string(),
-            app_id: 480,
-        },
-    ))) {
+fn login_with_oidc(mut auth: StdbAuthCommands) {
+    let options = StdbOidcAuthOptions {
+        client_id: "my-client-id".to_string(),
+        redirect_uri: "http://127.0.0.1:3000/callback".to_string(),
+        post_logout_redirect_uri: None,
+        scopes: vec!["openid".to_string(), "offline_access".to_string()],
+        prompt: StdbOidcPrompt::None,
+    };
+
+    if let Err(error) = auth.login(StdbLoginOptions::new(StdbAuthSource::Oidc(options))) {
         warn!("login request rejected: {error}");
     }
 }
@@ -94,7 +94,7 @@ Browser OIDC uses browser redirects:
 - clean callback parameters from the browser URL
 - resume callbacks automatically when a pending browser authorization is detected
 
-Persistent browser refresh-token storage is intentionally not exposed yet. This is because it is insecure to store refresh tokens in via browser Storage APIs.
+Persistent browser refresh-token storage is intentionally not exposed yet. This is because it is insecure to store refresh tokens in browser Storage APIs.
 
 ### Steam
 
@@ -109,12 +109,13 @@ Steam does not use persisted refresh-token recovery. This is because it is nativ
 
 ## Transport configuration
 
-`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints and applies a 10-second token request timeout. The endpoint URLs are not configurable.
+`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints and applies a 10-second token request timeout on native targets. Browser token requests use the browser networking stack without an explicit builder timeout. The endpoint URLs are not configurable.
 
 | Endpoint | URL |
 |---|---|
 | Authorization | `https://auth.spacetimedb.com/oidc/auth` |
 | Token | `https://auth.spacetimedb.com/oidc/token` |
+| End session | `https://auth.spacetimedb.com/oidc/session/end` |
 
 ## Commands
 
@@ -221,29 +222,31 @@ Token refresh can be handled the same way by listening for `StdbAuthTokenRefresh
 
 | Feature | Purpose |
 |---|---|
-| `oidc` | SpacetimeAuth OIDC authorization-code flow support |
+| `oidc` | SpacetimeAuth OIDC authorization-code flow support; enabled by default |
 | `steam` | Native SpacetimeAuth Steam ticket exchange support |
 | `browser` | Browser runtime support for OIDC redirects and callback resume |
 | `persistence` | Native OIDC refresh-token persistence using the OS keyring |
+
+The default feature set is `oidc` only. Enable `steam` and `persistence` explicitly for native apps that need them.
 
 For apps targeting both native and browser, configure features per target so native builds can include Steam and keyring persistence without enabling those dependencies for WASM:
 
 ```toml
 [dependencies]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy_stdb_auth = { version = "*", default-features = false, features = ["oidc", "persistence", "steam"] }
+bevy_stdb_auth = { version = "0.1", default-features = false, features = ["oidc", "persistence", "steam"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy_stdb_auth = { version = "*", default-features = false, features = ["oidc", "browser"] }
+bevy_stdb_auth = { version = "0.1", default-features = false, features = ["oidc", "browser"] }
 ```
 
 The `steam` and `persistence` features are native-only and are rejected on `wasm32` targets. Browser OIDC builds must enable `oidc` and `browser` together with `default-features = false`. Native all-feature builds still use the native OIDC implementation even when the `browser` feature is enabled.
 
 ## Compatibility
 
-| bevy_stdb_auth | bevy |
-|---|---|
-| 0.1 | 0.18 |
+| bevy_stdb_auth | Bevy | Rust |
+|---|---|---|
+| 0.1 | 0.18 | 1.89+ |
 
 ## Notes
 
