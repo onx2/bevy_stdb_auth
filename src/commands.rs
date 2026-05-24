@@ -1,10 +1,11 @@
+#[cfg(feature = "oidc")]
+use crate::END_SESSION_ENDPOINT;
 use crate::{
     error::{StdbAuthCommandError, StdbAuthError},
     message::StdbAuthCommandRejectedMessage,
     plugin::PendingAuthOperation,
     session::{StdbAuthCredentialMaterial, StdbAuthSession},
     source::StdbAuthSource,
-    transport::StdbAuthTransportConfig,
 };
 use bevy_ecs::{
     message::Messages,
@@ -149,12 +150,8 @@ impl Command for StartLoginCommand {
         }
 
         let source = self.options.source;
-        let transport_config = world
-            .get_resource::<StdbAuthTransportConfig>()
-            .cloned()
-            .unwrap_or_default();
         let task = IoTaskPool::get_or_init(TaskPool::default)
-            .spawn(async move { source.acquire_session(transport_config).await });
+            .spawn(async move { source.acquire_session().await });
         world.insert_resource(PendingAuthOperation::Login(task));
     }
 }
@@ -181,10 +178,6 @@ impl Command for StartLogoutCommand {
         let id_token_hint = world
             .get_resource::<StdbAuthCredentialMaterial>()
             .and_then(|credentials| credentials.id_token.clone());
-        let transport_config = world
-            .get_resource::<StdbAuthTransportConfig>()
-            .cloned()
-            .unwrap_or_default();
         let options = self.options;
         let task = IoTaskPool::get_or_init(TaskPool::default).spawn(async move {
             if options.forget_device {
@@ -192,7 +185,7 @@ impl Command for StartLogoutCommand {
             }
 
             if options.end_provider_session {
-                end_provider_session(&session, id_token_hint.as_deref(), &transport_config)?;
+                end_provider_session(&session, id_token_hint.as_deref())?;
             }
 
             Ok::<(), StdbAuthError>(())
@@ -240,12 +233,7 @@ impl Command for StartRefreshCommand {
             return;
         }
 
-        let transport_config = world
-            .get_resource::<StdbAuthTransportConfig>()
-            .cloned()
-            .unwrap_or_default();
-        let task =
-            crate::refresh::spawn_refresh_session_task(session, refresh_token, transport_config);
+        let task = crate::refresh::spawn_refresh_session_task(session, refresh_token);
         world.insert_resource(PendingAuthOperation::Refresh {
             task,
             automatic: false,
@@ -271,13 +259,12 @@ impl Command for CancelPendingAuthCommand {
 fn end_provider_session(
     session: &StdbAuthSession,
     id_token_hint: Option<&str>,
-    transport_config: &StdbAuthTransportConfig,
 ) -> Result<(), StdbAuthError> {
     if session.source != crate::session::StdbAuthSessionSource::Oidc {
         return Ok(());
     }
 
-    let end_session_url = build_end_session_url(session, id_token_hint, transport_config);
+    let end_session_url = build_end_session_url(session, id_token_hint);
 
     #[cfg(all(feature = "browser", target_arch = "wasm32"))]
     {
@@ -306,18 +293,13 @@ fn end_provider_session(
 fn end_provider_session(
     _session: &StdbAuthSession,
     _id_token_hint: Option<&str>,
-    _transport_config: &StdbAuthTransportConfig,
 ) -> Result<(), StdbAuthError> {
     Ok(())
 }
 
 #[cfg(feature = "oidc")]
-fn build_end_session_url(
-    session: &StdbAuthSession,
-    id_token_hint: Option<&str>,
-    transport_config: &StdbAuthTransportConfig,
-) -> Url {
-    let mut end_session_url = Url::parse(transport_config.end_session_endpoint_url())
+fn build_end_session_url(session: &StdbAuthSession, id_token_hint: Option<&str>) -> Url {
+    let mut end_session_url = Url::parse(END_SESSION_ENDPOINT)
         .expect("static SpacetimeAuth end-session endpoint must be valid");
 
     let mut params = Vec::new();
@@ -418,11 +400,7 @@ mod tests {
     fn end_session_url_contains_logout_context() {
         let mut session = session_with_refresh_credentials();
         session.post_logout_redirect_uri = Some("http://127.0.0.1:3000/logged-out".to_string());
-        let end_session_url = build_end_session_url(
-            &session,
-            Some("id-token"),
-            &StdbAuthTransportConfig::default(),
-        );
+        let end_session_url = build_end_session_url(&session, Some("id-token"));
         let params = end_session_url
             .query_pairs()
             .map(|(key, value)| (key.into_owned(), value.into_owned()))
@@ -449,8 +427,7 @@ mod tests {
         let mut session = session_with_refresh_credentials();
         session.client_id = Some("  ".to_string());
         session.post_logout_redirect_uri = Some("  ".to_string());
-        let end_session_url =
-            build_end_session_url(&session, Some("  "), &StdbAuthTransportConfig::default());
+        let end_session_url = build_end_session_url(&session, Some("  "));
 
         assert!(end_session_url.query().is_none());
     }

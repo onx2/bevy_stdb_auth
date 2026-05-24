@@ -5,7 +5,6 @@ use crate::{
     error::StdbAuthError,
     session::{StdbAuthSessionParts, StdbAuthSessionSource},
     token::StdbTokenResponse,
-    transport::StdbAuthTransportConfig,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -28,13 +27,12 @@ struct BrowserPendingAuthorization {
 
 pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
-    transport_config: StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
     if pending_callback_available() {
-        return resume_session(transport_config).await;
+        return resume_session().await;
     }
 
-    start_authorization_redirect(&options, &transport_config)?;
+    start_authorization_redirect(&options)?;
     std::future::pending::<Result<StdbAuthSessionParts, StdbAuthError>>().await
 }
 
@@ -52,9 +50,7 @@ pub(crate) fn pending_callback_available() -> bool {
     has_callback_params && load_pending_authorization().is_ok_and(|pending| pending.is_some())
 }
 
-pub(crate) async fn resume_session(
-    transport_config: StdbAuthTransportConfig,
-) -> Result<StdbAuthSessionParts, StdbAuthError> {
+pub(crate) async fn resume_session() -> Result<StdbAuthSessionParts, StdbAuthError> {
     let pending = load_pending_authorization()?.ok_or_else(|| {
         StdbAuthError::InvalidOidcCallback("missing browser OIDC pending state".to_string())
     })?;
@@ -77,7 +73,7 @@ pub(crate) async fn resume_session(
         &authorization_code.code,
         &pending.pkce_verifier,
     )?;
-    let token = exchange_authorization_code(&transport_config, token_form).await?;
+    let token = exchange_authorization_code(token_form).await?;
 
     token.into_session_parts(
         Some(pending.client_id),
@@ -86,11 +82,8 @@ pub(crate) async fn resume_session(
     )
 }
 
-fn start_authorization_redirect(
-    options: &StdbOidcAuthOptions,
-    transport_config: &StdbAuthTransportConfig,
-) -> Result<(), StdbAuthError> {
-    let authorization_request = common::build_authorization_request(options, transport_config)?;
+fn start_authorization_redirect(options: &StdbOidcAuthOptions) -> Result<(), StdbAuthError> {
+    let authorization_request = common::build_authorization_request(options)?;
     let pending = BrowserPendingAuthorization {
         client_id: options.client_id.clone(),
         redirect_uri: options.redirect_uri.clone(),
@@ -110,12 +103,10 @@ fn start_authorization_redirect(
 }
 
 async fn exchange_authorization_code(
-    transport_config: &StdbAuthTransportConfig,
     token_form: common::StdbOidcTokenRequestForm,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.token_client()?;
-    let response = client
-        .post(transport_config.token_endpoint_url())
+    let client = crate::transport::token_client()?;
+    let response = crate::transport::token_endpoint_request(&client)
         .form(&token_form.params)
         .send()
         .await

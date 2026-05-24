@@ -8,8 +8,6 @@ A [Bevy](https://bevy.org/)-native integration for the [SpacetimeAuth](https://s
 [![CI](https://github.com/onx2/bevy_stdb_auth/actions/workflows/ci.yml/badge.svg)](https://github.com/onx2/bevy_stdb_auth/actions/workflows/ci.yml?query=branch%3Amain)
 [![CodeQL](https://github.com/onx2/bevy_stdb_auth/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/onx2/bevy_stdb_auth/actions/workflows/github-code-scanning/codeql)
 
-
-
 ## Overview
 
 `bevy_stdb_auth` adapts SpacetimeAuth login, refresh, logout, and session lifecycle state into Bevy-style resources, systems, plugins, commands, and messages.
@@ -18,7 +16,6 @@ This crate is intentionally scoped to SpacetimeAuth and does not manage Spacetim
 
 ## Features
 
-- **Plugin setup** via `StdbAuthPlugin`
 - **Command interface** for login, logout, manual refresh requests, and pending-operation cancellation through `StdbAuthCommands`
 - **Current auth state** through `StdbAuthSession`
 - **Lifecycle messages** for login, refresh, and logout
@@ -42,11 +39,12 @@ fn main() {
 }
 
 fn login_with_oidc(mut auth: StdbAuthCommands) {
+    // These options should match your SpacetimeAuth client configuration
     let options = StdbOidcAuthOptions {
         client_id: "my-client-id".to_string(),
         redirect_uri: "http://127.0.0.1:3000/callback".to_string(),
         post_logout_redirect_uri: None,
-        scopes: vec!["openid".to_string(), "offline_access".to_string()],
+        scopes: vec![String::from("openid"), String::from("profile"), String::from("email")],
         prompt: StdbOidcPrompt::None,
     };
 
@@ -107,9 +105,9 @@ Steam support is native-only and scoped to SpacetimeAuth's Steam ticket exchange
 
 Steam does not use persisted refresh-token recovery. This is because it is native and doesn't require a web browser callback loop to work.
 
-## Transport configuration
+## HTTP transport
 
-`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints and applies a 10-second token request timeout on native targets. Browser token requests use the browser networking stack without an explicit builder timeout. The endpoint URLs are not configurable.
+`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints. Token endpoint requests use an internal 10-second timeout. The endpoint URLs are not configurable.
 
 | Endpoint | URL |
 |---|---|

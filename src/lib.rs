@@ -30,6 +30,14 @@ mod token;
 mod transport;
 
 #[cfg(feature = "oidc")]
+pub(crate) const AUTHORIZATION_CODE_GRANT_TYPE: &str = "authorization_code";
+#[cfg(feature = "oidc")]
+pub(crate) const END_SESSION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/session/end";
+#[cfg(feature = "oidc")]
+pub(crate) const AUTHORIZATION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/auth";
+pub(crate) const TOKEN_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/token";
+
+#[cfg(feature = "oidc")]
 mod oidc;
 #[cfg(all(feature = "steam", not(target_arch = "wasm32")))]
 mod steam;
@@ -49,14 +57,8 @@ pub mod prelude {
         },
         commands::{StdbAuthCommands, StdbAuthOperationKind, StdbLoginOptions, StdbLogoutOptions},
         error::{StdbAuthCommandError, StdbAuthError},
-        message::{
-            StdbAuthCommandRejectedMessage, StdbAuthFailedMessage, StdbAuthLogoutFailedMessage,
-            StdbAuthLogoutSucceededMessage, StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage,
-            StdbAuthTokenRefreshedMessage,
-        },
         plugin::{StdbAuthPlugin, StdbAutoRefreshOptions},
         session::{StdbAuthSession, StdbAuthSessionSource},
-        set::StdbAuthSet,
         source::StdbAuthSource,
     };
 }

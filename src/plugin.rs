@@ -7,7 +7,6 @@ use crate::{
     },
     session::{StdbAuthCredentialMaterial, StdbAuthSession, StdbAuthSessionParts, clear_session},
     set::StdbAuthSet,
-    transport::StdbAuthTransportConfig,
 };
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, Resource, World, resource_exists};
@@ -47,29 +46,18 @@ impl Default for StdbAutoRefreshOptions {
 pub struct StdbAuthPlugin {
     /// Automatic refresh behavior for sessions with refresh credentials.
     pub auto_refresh: Option<StdbAutoRefreshOptions>,
-    /// How long native token endpoint requests may run before timing out.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub token_request_timeout: Option<Duration>,
 }
 
 impl Default for StdbAuthPlugin {
     fn default() -> Self {
         Self {
             auto_refresh: Some(StdbAutoRefreshOptions::default()),
-            #[cfg(not(target_arch = "wasm32"))]
-            token_request_timeout: StdbAuthTransportConfig::default().token_request_timeout(),
         }
     }
 }
 
 impl Plugin for StdbAuthPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let transport_config = StdbAuthTransportConfig::try_new(self.token_request_timeout)
-            .expect("invalid SpacetimeAuth transport configuration");
-        #[cfg(target_arch = "wasm32")]
-        let transport_config = StdbAuthTransportConfig::default();
-        app.insert_resource(transport_config);
         app.insert_resource(StdbAuthRefreshConfig {
             options: self.auto_refresh.clone(),
         });
@@ -149,12 +137,8 @@ fn request_browser_callback_resume(world: &mut World) {
         return;
     }
 
-    let transport_config = world
-        .get_resource::<StdbAuthTransportConfig>()
-        .cloned()
-        .unwrap_or_default();
     let task = bevy_tasks::IoTaskPool::get_or_init(bevy_tasks::TaskPool::default)
-        .spawn(async move { crate::oidc::browser::resume_session(transport_config).await });
+        .spawn(async move { crate::oidc::browser::resume_session().await });
     world.insert_resource(PendingAuthOperation::Login(task));
 }
 
@@ -193,11 +177,7 @@ fn request_auto_refresh(world: &mut World) {
         return;
     }
 
-    let transport_config = world
-        .get_resource::<StdbAuthTransportConfig>()
-        .cloned()
-        .unwrap_or_default();
-    let task = crate::refresh::spawn_refresh_session_task(session, refresh_token, transport_config);
+    let task = crate::refresh::spawn_refresh_session_task(session, refresh_token);
     world.insert_resource(PendingAuthOperation::Refresh {
         task,
         automatic: true,

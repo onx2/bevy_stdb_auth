@@ -19,7 +19,7 @@ http://127.0.0.1:3000/callback
 | `STDB_AUTH_CLIENT_ID` | yes | | SpacetimeAuth OAuth client ID |
 | `STDB_AUTH_REDIRECT_URI` | no | `http://127.0.0.1:3000/callback` | Native loopback callback URI |
 | `STDB_AUTH_POST_LOGOUT_REDIRECT_URI` | no | | URI used after provider logout |
-| `STDB_AUTH_SCOPES` | no | `openid offline_access` | Space-separated OAuth scopes |
+| `STDB_AUTH_SCOPES` | no | `openid profile email` | Space-separated OAuth scopes |
 
 ## Run
 

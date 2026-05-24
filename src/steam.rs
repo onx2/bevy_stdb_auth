@@ -4,7 +4,6 @@ use crate::{
     error::StdbAuthError,
     session::{StdbAuthSessionParts, StdbAuthSessionSource},
     token::StdbTokenResponse,
-    transport::StdbAuthTransportConfig,
 };
 use std::{
     sync::mpsc,
@@ -17,6 +16,9 @@ const CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(5);
 const CALLBACK_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Options for authenticating with a Steam Web API ticket.
+///
+/// Using Steam authentication requires SpacetimeAuth to be configured with "Steam Publisher Key" and "Steam App IDs".
+/// See the [SpacetimeAuth documentation](https://spacetimedb.com/docs/core-concepts/authentication/spacetimeauth/) for more information.
 #[derive(Clone, Debug)]
 pub struct StdbSteamAuthOptions {
     /// The OAuth client identifier.
@@ -27,9 +29,8 @@ pub struct StdbSteamAuthOptions {
 
 pub(crate) async fn acquire_session(
     options: StdbSteamAuthOptions,
-    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
-    let token = acquire_token_response(&options, transport_config)?;
+    let token = acquire_token_response(&options)?;
 
     token.into_session_parts(Some(options.client_id), StdbAuthSessionSource::Steam, None)
 }
@@ -37,7 +38,6 @@ pub(crate) async fn acquire_session(
 /// Acquires a token response using Steam authentication.
 fn acquire_token_response(
     options: &StdbSteamAuthOptions,
-    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
     let steam_client = Client::init_app(options.app_id).map_err(|error| {
         StdbAuthError::Internal(format!("failed to initialize Steam client: {error}"))
@@ -45,18 +45,16 @@ fn acquire_token_response(
 
     let ticket = request_steam_webapi_ticket(&steam_client)?;
 
-    exchange_steam_ticket_request(&options.client_id, &ticket, transport_config)
+    exchange_steam_ticket_request(&options.client_id, &ticket)
 }
 
 /// Exchanges a Steam Web API ticket for a token response.
 fn exchange_steam_ticket_request(
     client_id: &str,
     steam_ticket: &[u8],
-    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.token_client()?;
-    let response = client
-        .post(transport_config.token_endpoint_url())
+    let client = crate::transport::token_client()?;
+    let response = crate::transport::token_endpoint_request(&client)
         .form(&[
             ("grant_type", "urn:spacetimeauth:steam-ticket"),
             ("steam_ticket", hex::encode(steam_ticket).as_str()),

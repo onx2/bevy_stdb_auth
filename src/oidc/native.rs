@@ -5,7 +5,6 @@ use crate::{
     error::StdbAuthError,
     session::{StdbAuthSessionParts, StdbAuthSessionSource},
     token::StdbTokenResponse,
-    transport::StdbAuthTransportConfig,
 };
 use std::{
     io::{Read, Write},
@@ -22,17 +21,16 @@ const CALLBACK_REQUEST_BUFFER_SIZE: usize = 8192;
 
 pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
-    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
     let redirect_uri = validate_native_redirect_uri(&options.redirect_uri)?;
 
     #[cfg(feature = "persistence")]
-    if let Some(parts) = try_refresh_stored_session(&options, transport_config).await {
+    if let Some(parts) = try_refresh_stored_session(&options).await {
         return Ok(parts);
     }
 
     let listener = bind_loopback_listener(&redirect_uri)?;
-    let authorization_request = common::build_authorization_request(&options, transport_config)?;
+    let authorization_request = common::build_authorization_request(&options)?;
 
     webbrowser::open(authorization_request.authorization_url.as_str()).map_err(|error| {
         StdbAuthError::Internal(format!("failed to open system browser: {error}"))
@@ -49,7 +47,7 @@ pub(crate) async fn acquire_session(
         &authorization_code.code,
         &authorization_request.pkce_verifier,
     )?;
-    let token = exchange_authorization_code(transport_config, token_form)?;
+    let token = exchange_authorization_code(token_form)?;
 
     token.into_session_parts(
         Some(options.client_id),
@@ -59,10 +57,7 @@ pub(crate) async fn acquire_session(
 }
 
 #[cfg(feature = "persistence")]
-async fn try_refresh_stored_session(
-    options: &StdbOidcAuthOptions,
-    transport_config: &StdbAuthTransportConfig,
-) -> Option<StdbAuthSessionParts> {
+async fn try_refresh_stored_session(options: &StdbOidcAuthOptions) -> Option<StdbAuthSessionParts> {
     let refresh_token = super::persistence::stored_refresh_token_best_effort(&options.client_id)?;
     let session = crate::session::StdbAuthSession {
         access_token: String::new(),
@@ -75,7 +70,7 @@ async fn try_refresh_stored_session(
         post_logout_redirect_uri: options.post_logout_redirect_uri.clone(),
     };
 
-    crate::refresh::refresh_session(session, refresh_token, transport_config.clone())
+    crate::refresh::refresh_session(session, refresh_token)
         .await
         .ok()
 }
@@ -134,12 +129,10 @@ fn receive_authorization_code(
 }
 
 fn exchange_authorization_code(
-    transport_config: &StdbAuthTransportConfig,
     token_form: common::StdbOidcTokenRequestForm,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.token_client()?;
-    let response = client
-        .post(transport_config.token_endpoint_url())
+    let client = crate::transport::token_client()?;
+    let response = crate::transport::token_endpoint_request(&client)
         .form(&token_form.params)
         .send()
         .map_err(StdbAuthError::from)?

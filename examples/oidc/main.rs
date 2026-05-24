@@ -5,7 +5,7 @@ use bevy_time::{Time, TimePlugin};
 use std::{env, time::Duration};
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:3000/callback";
-const DEFAULT_SCOPES: &str = "openid offline_access";
+const DEFAULT_SCOPES: &str = "openid profile email";
 const EXAMPLE_TIMEOUT: Duration = Duration::from_secs(180);
 const FRAME_DELAY: Duration = Duration::from_millis(16);
 

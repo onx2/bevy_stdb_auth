@@ -38,13 +38,8 @@ serde_json = { version = "1.0" }
 thiserror = { version = "2.0" }
 url = { version = "2.5" }
 
-# OIDC
-# ----------------------------------------------------
 oauth2 = { version = "5.0", optional = true, default-features = false }
-# ----------------------------------------------------
 
-# BROWSER
-# ----------------------------------------------------
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { version = "0.3", optional = true, default-features = false }
 web-sys = { version = "0.3", optional = true, default-features = false, features = [
@@ -54,20 +49,14 @@ web-sys = { version = "0.3", optional = true, default-features = false, features
     "Storage",
 ] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "form"] }
-# ----------------------------------------------------
 
-# NATIVE
-# ----------------------------------------------------
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "form", "default-tls"] }
 webbrowser = { version = "1.2", optional = true }
 steamworks = { version = "0.13", optional = true }
 hex = { version = "0.4", optional = true }
 keyring-core = { version = "1.0", optional = true }
-# ----------------------------------------------------
 
-# PERSISTENCE
-# ----------------------------------------------------
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1.0", optional = true, features = ["keychain"] }
 
@@ -76,7 +65,6 @@ windows-native-keyring-store = { version = "1.0", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus-secret-service-keyring-store = { version = "1.0", optional = true, features = ["rt-async-io-crypto-rust"] }
-# ----------------------------------------------------
 
 [features]
 default = ["oidc"]

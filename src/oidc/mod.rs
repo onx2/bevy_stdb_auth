@@ -10,7 +10,6 @@ mod native;
 
 use crate::error::StdbAuthError;
 use crate::session::StdbAuthSessionParts;
-use crate::transport::StdbAuthTransportConfig;
 
 /// Controls the OIDC `prompt` authorization parameter.
 #[derive(Clone, Debug, Default)]
@@ -36,6 +35,10 @@ impl StdbOidcPrompt {
 }
 
 /// Options for the SpacetimeAuth OIDC authorization-code flow.
+///
+/// Using OIDC authentication requires a client to be configured in SpacetimeAuth, with details such as the "Scope",
+/// "Redirect URIs", and optionally the "Post-Logout Redirect URIs".
+/// See the [SpacetimeAuth documentation](https://spacetimedb.com/docs/core-concepts/authentication/spacetimeauth/) for more information.
 #[derive(Clone, Debug)]
 pub struct StdbOidcAuthOptions {
     /// The OAuth client identifier.
@@ -53,15 +56,13 @@ pub struct StdbOidcAuthOptions {
 #[cfg(all(feature = "browser", target_arch = "wasm32"))]
 pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
-    transport_config: StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
-    browser::acquire_session(options, transport_config).await
+    browser::acquire_session(options).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
-    transport_config: StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
-    native::acquire_session(options, &transport_config).await
+    native::acquire_session(options).await
 }

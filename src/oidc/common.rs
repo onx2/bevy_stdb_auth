@@ -1,12 +1,10 @@
 //! Shared OIDC request construction and token normalization.
 
 use super::StdbOidcAuthOptions;
-use crate::{error::StdbAuthError, transport::StdbAuthTransportConfig};
+use crate::{AUTHORIZATION_CODE_GRANT_TYPE, AUTHORIZATION_ENDPOINT, error::StdbAuthError};
 use oauth2::{CsrfToken, PkceCodeChallenge};
 use std::collections::BTreeMap;
 use url::Url;
-
-const AUTHORIZATION_CODE_GRANT_TYPE: &str = "authorization_code";
 
 /// An OIDC authorization request and its local validation state.
 pub(super) struct StdbOidcAuthorizationRequest {
@@ -28,14 +26,13 @@ pub(super) struct StdbOidcTokenRequestForm {
 /// Builds a SpacetimeAuth OIDC authorization URL.
 pub(super) fn build_authorization_request(
     options: &StdbOidcAuthOptions,
-    transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbOidcAuthorizationRequest, StdbAuthError> {
     let client_id = require_non_empty(&options.client_id, "client_id")?;
     let redirect_uri = validate_redirect_uri(&options.redirect_uri)?;
     let scopes = normalized_scopes(&options.scopes);
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
     let state = CsrfToken::new_random();
-    let mut authorization_url = Url::parse(transport_config.authorization_endpoint_url())
+    let mut authorization_url = Url::parse(AUTHORIZATION_ENDPOINT)
         .expect("static SpacetimeAuth authorization endpoint must be valid");
 
     {
@@ -205,9 +202,8 @@ mod tests {
 
     #[test]
     fn authorization_request_contains_oidc_parameters() {
-        let request =
-            build_authorization_request(&auth_options(), &StdbAuthTransportConfig::default())
-                .expect("authorization request should be valid");
+        let request = build_authorization_request(&auth_options())
+            .expect("authorization request should be valid");
         let query = query_map(&request.authorization_url);
 
         assert_eq!(

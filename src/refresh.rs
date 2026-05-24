@@ -3,7 +3,6 @@
 use crate::{
     error::StdbAuthError,
     session::{StdbAuthSession, StdbAuthSessionParts},
-    transport::StdbAuthTransportConfig,
 };
 use bevy_tasks::{IoTaskPool, Task, TaskPool};
 use std::collections::BTreeMap;
@@ -12,22 +11,20 @@ use std::collections::BTreeMap;
 pub(crate) fn spawn_refresh_session_task(
     session: StdbAuthSession,
     refresh_token: String,
-    transport_config: StdbAuthTransportConfig,
 ) -> Task<Result<StdbAuthSessionParts, StdbAuthError>> {
     IoTaskPool::get_or_init(TaskPool::default)
-        .spawn(async move { refresh_session(session, refresh_token, transport_config).await })
+        .spawn(async move { refresh_session(session, refresh_token).await })
 }
 
 pub(crate) async fn refresh_session(
     session: StdbAuthSession,
     refresh_token: String,
-    transport_config: StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
     let client_id = session.client_id.clone().ok_or_else(|| {
         StdbAuthError::InvalidConfig("refresh requires a session client ID".to_string())
     })?;
     let token_form = refresh_token_form(&client_id, &refresh_token)?;
-    let token = exchange_refresh_token(&transport_config, token_form).await?;
+    let token = exchange_refresh_token(token_form).await?;
     let parts = token.into_session_parts(
         Some(client_id),
         session.source,
@@ -72,12 +69,10 @@ fn require_non_empty(value: &str, field: &'static str) -> Result<String, StdbAut
 
 #[cfg(not(target_arch = "wasm32"))]
 async fn exchange_refresh_token(
-    transport_config: &StdbAuthTransportConfig,
     token_form: RefreshTokenRequestForm,
 ) -> Result<crate::token::StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.token_client()?;
-    let response = client
-        .post(transport_config.token_endpoint_url())
+    let client = crate::transport::token_client()?;
+    let response = crate::transport::token_endpoint_request(&client)
         .form(&token_form.params)
         .send()
         .map_err(StdbAuthError::from)?
@@ -91,12 +86,10 @@ async fn exchange_refresh_token(
 
 #[cfg(target_arch = "wasm32")]
 async fn exchange_refresh_token(
-    transport_config: &StdbAuthTransportConfig,
     token_form: RefreshTokenRequestForm,
 ) -> Result<crate::token::StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.token_client()?;
-    let response = client
-        .post(transport_config.token_endpoint_url())
+    let client = crate::transport::token_client()?;
+    let response = crate::transport::token_endpoint_request(&client)
         .form(&token_form.params)
         .send()
         .await
