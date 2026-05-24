@@ -107,7 +107,7 @@ Steam does not use persisted refresh-token recovery. This is because it is nativ
 
 ## HTTP transport
 
-`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints. Token endpoint requests use an internal 10-second timeout. The endpoint URLs are not configurable.
+`StdbAuthPlugin::default()` uses the fixed SpacetimeAuth endpoints. Token endpoint requests use an internal 10-second timeout. The endpoint URLs are not configurable. For more information, see the [SpacetimeAuth API docs](https://spacetimedb.com/docs/core-concepts/authentication/spacetimeauth/).
 
 | Endpoint | URL |
 |---|---|
