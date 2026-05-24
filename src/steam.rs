@@ -13,6 +13,9 @@ use std::{
 };
 use steamworks::{Client, TicketForWebApiResponse};
 
+const CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(5);
+const CALLBACK_POLL_INTERVAL: Duration = Duration::from_millis(10);
+
 /// Options for authenticating with a Steam Web API ticket.
 #[derive(Clone, Debug)]
 pub struct StdbSteamAuthOptions {
@@ -22,7 +25,7 @@ pub struct StdbSteamAuthOptions {
     pub app_id: u32,
 }
 
-pub(crate) fn acquire_session(
+pub(crate) async fn acquire_session(
     options: StdbSteamAuthOptions,
     transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
@@ -51,7 +54,7 @@ fn exchange_steam_ticket_request(
     steam_ticket: &[u8],
     transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.blocking_token_client()?;
+    let client = transport_config.token_client()?;
     let response = client
         .post(transport_config.token_endpoint_url())
         .form(&[
@@ -83,7 +86,6 @@ fn request_steam_webapi_ticket(client: &Client) -> Result<Vec<u8>, StdbAuthError
         }
     });
 
-    let timeout = Duration::from_secs(5);
     let start = Instant::now();
 
     loop {
@@ -93,10 +95,10 @@ fn request_steam_webapi_ticket(client: &Client) -> Result<Vec<u8>, StdbAuthError
             return result.map_err(|error| StdbAuthError::Internal(error.to_string()));
         }
 
-        if start.elapsed() >= timeout {
+        if start.elapsed() >= CALLBACK_READ_TIMEOUT {
             return Err(StdbAuthError::Timeout);
         }
 
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(CALLBACK_POLL_INTERVAL);
     }
 }

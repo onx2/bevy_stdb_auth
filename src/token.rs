@@ -24,7 +24,6 @@ pub(crate) struct StdbTokenResponse {
 }
 
 impl StdbTokenResponse {
-    #[allow(dead_code)]
     pub(crate) fn into_session_parts(
         self,
         client_id: Option<String>,

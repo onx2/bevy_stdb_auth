@@ -27,7 +27,7 @@ impl StdbAuthSource {
             #[cfg(feature = "oidc")]
             Self::Oidc(options) => acquire_oidc_session(options, transport_config).await,
             #[cfg(all(feature = "steam", not(target_arch = "wasm32")))]
-            Self::Steam(options) => acquire_steam_session(options, &transport_config),
+            Self::Steam(options) => acquire_steam_session(options, &transport_config).await,
         }
     }
 }

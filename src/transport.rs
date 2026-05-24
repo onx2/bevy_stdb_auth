@@ -1,24 +1,35 @@
 use crate::error::StdbAuthError;
 use bevy_ecs::prelude::Resource;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
 #[cfg(feature = "oidc")]
 const SPACETIMEAUTH_AUTHORIZATION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/auth";
 const SPACETIMEAUTH_TOKEN_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/token";
+#[cfg(feature = "oidc")]
 const SPACETIMEAUTH_END_SESSION_ENDPOINT: &str = "https://auth.spacetimedb.com/oidc/session/end";
-const DEFAULT_TOKEN_REQUEST_TIMEOUT_SECS: u64 = 10;
 
 /// Configures HTTP transport for SpacetimeAuth provider requests.
 #[derive(Clone, Debug, Resource)]
 pub(crate) struct StdbAuthTransportConfig {
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    token_request_timeout: Duration,
+    #[cfg(not(target_arch = "wasm32"))]
+    token_request_timeout: Option<Duration>,
+}
+
+impl Default for StdbAuthTransportConfig {
+    fn default() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            token_request_timeout: Some(Duration::from_secs(10)),
+        }
+    }
 }
 
 impl StdbAuthTransportConfig {
     /// Creates a validated [`StdbAuthTransportConfig`].
-    pub(crate) fn try_new(token_request_timeout: Duration) -> Result<Self, StdbAuthError> {
-        if token_request_timeout.is_zero() {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn try_new(token_request_timeout: Option<Duration>) -> Result<Self, StdbAuthError> {
+        if token_request_timeout.is_some_and(|v| v.is_zero()) {
             return Err(StdbAuthError::InvalidConfig(
                 "token request timeout must be greater than zero".to_string(),
             ));
@@ -41,19 +52,20 @@ impl StdbAuthTransportConfig {
     }
 
     /// Returns the SpacetimeAuth end-session endpoint URL.
+    #[cfg(feature = "oidc")]
     pub(crate) fn end_session_endpoint_url(&self) -> &'static str {
         SPACETIMEAUTH_END_SESSION_ENDPOINT
     }
 
-    /// Returns the default token request timeout.
-    pub(crate) fn default_token_request_timeout() -> Duration {
-        Duration::from_secs(DEFAULT_TOKEN_REQUEST_TIMEOUT_SECS)
+    /// Returns the token request timeout duration.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn token_request_timeout(&self) -> Option<Duration> {
+        self.token_request_timeout
     }
 
     /// Builds a native blocking token request client.
-    #[allow(dead_code)]
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn blocking_token_client(&self) -> Result<reqwest::blocking::Client, StdbAuthError> {
+    pub(crate) fn token_client(&self) -> Result<reqwest::blocking::Client, StdbAuthError> {
         reqwest::blocking::Client::builder()
             .timeout(self.token_request_timeout)
             .redirect(reqwest::redirect::Policy::none())
@@ -62,19 +74,11 @@ impl StdbAuthTransportConfig {
     }
 
     /// Builds a browser token request client.
-    #[allow(dead_code)]
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn token_client(&self) -> Result<reqwest::Client, StdbAuthError> {
         reqwest::Client::builder()
             .build()
             .map_err(StdbAuthError::from)
-    }
-}
-
-impl Default for StdbAuthTransportConfig {
-    fn default() -> Self {
-        Self::try_new(Self::default_token_request_timeout())
-            .expect("default SpacetimeAuth transport configuration must be valid")
     }
 }
 
@@ -94,15 +98,17 @@ mod tests {
             config.token_endpoint_url(),
             "https://auth.spacetimedb.com/oidc/token"
         );
+        #[cfg(feature = "oidc")]
         assert_eq!(
             config.end_session_endpoint_url(),
             "https://auth.spacetimedb.com/oidc/session/end"
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn zero_token_request_timeout_is_rejected() {
-        let error = StdbAuthTransportConfig::try_new(Duration::ZERO)
+        let error = StdbAuthTransportConfig::try_new(Some(Duration::ZERO))
             .expect_err("zero timeout should be rejected");
 
         assert!(matches!(error, StdbAuthError::InvalidConfig(_)));

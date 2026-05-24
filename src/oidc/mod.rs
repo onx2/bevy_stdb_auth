@@ -3,9 +3,9 @@ mod common;
 #[cfg(all(feature = "persistence", not(target_arch = "wasm32")))]
 pub(crate) mod persistence;
 
-#[cfg(all(feature = "oidc", feature = "browser", target_arch = "wasm32"))]
+#[cfg(all(feature = "browser", target_arch = "wasm32"))]
 pub(crate) mod browser;
-#[cfg(all(feature = "oidc", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 mod native;
 
 use crate::error::StdbAuthError;
@@ -50,16 +50,18 @@ pub struct StdbOidcAuthOptions {
     pub prompt: StdbOidcPrompt,
 }
 
+#[cfg(all(feature = "browser", target_arch = "wasm32"))]
 pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
     transport_config: StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
-    #[cfg(all(feature = "browser", target_arch = "wasm32"))]
-    {
-        browser::acquire_session(options, transport_config).await
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        native::acquire_session(options, &transport_config)
-    }
+    browser::acquire_session(options, transport_config).await
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) async fn acquire_session(
+    options: StdbOidcAuthOptions,
+    transport_config: StdbAuthTransportConfig,
+) -> Result<StdbAuthSessionParts, StdbAuthError> {
+    native::acquire_session(options, &transport_config).await
 }

@@ -75,7 +75,7 @@ fn on_auth_succeeded(mut messages: ReadStdbAuthSucceededMessage) {
 
 Native OIDC uses the system browser and a loopback redirect listener. The configured redirect URI must use `http`, a loopback host, a non-zero explicit port, and no query string.
 
-- build authorization URL with PKCE, CSRF state, and OIDC nonce
+- build authorization URL with PKCE and CSRF state
 - open the system browser
 - listen for the redirect on a local callback URL
 - exchange the authorization code for a SpacetimeAuth token response
@@ -120,7 +120,7 @@ Steam does not use persisted refresh-token recovery. This is because it is nativ
 
 Use `StdbAuthCommands` from normal Bevy systems to manage auth state.
 
-Command methods return `Result<(), StdbAuthCommandError>` when a request cannot be accepted against the currently visible world state. Deferred same-frame rejections emit `StdbAuthCommandRejectedMessage`.
+Command methods return `Result<(), StdbAuthCommandError>` when a request cannot be accepted against the currently visible world state. Broader auth lifecycle failures use `StdbAuthError`, and command rejections convert into `StdbAuthError::Command` when a unified error type is needed. Deferred same-frame rejections emit `StdbAuthCommandRejectedMessage`.
 
 | Method | Behavior |
 |---|---|

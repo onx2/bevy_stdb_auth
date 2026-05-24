@@ -12,8 +12,6 @@ const AUTHORIZATION_CODE_GRANT_TYPE: &str = "authorization_code";
 pub(super) struct StdbOidcAuthorizationRequest {
     pub(super) authorization_url: Url,
     pub(super) state: String,
-    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-    pub(super) nonce: String,
     pub(super) pkce_verifier: String,
 }
 
@@ -37,7 +35,6 @@ pub(super) fn build_authorization_request(
     let scopes = normalized_scopes(&options.scopes);
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
     let state = CsrfToken::new_random();
-    let nonce = CsrfToken::new_random();
     let mut authorization_url = Url::parse(transport_config.authorization_endpoint_url())
         .expect("static SpacetimeAuth authorization endpoint must be valid");
 
@@ -47,7 +44,6 @@ pub(super) fn build_authorization_request(
         query.append_pair("client_id", &client_id);
         query.append_pair("redirect_uri", redirect_uri.as_str());
         query.append_pair("state", state.secret());
-        query.append_pair("nonce", nonce.secret());
         query.append_pair("code_challenge", pkce_challenge.as_str());
         query.append_pair("code_challenge_method", pkce_challenge.method().as_str());
 
@@ -63,7 +59,6 @@ pub(super) fn build_authorization_request(
     Ok(StdbOidcAuthorizationRequest {
         authorization_url,
         state: state.into_secret(),
-        nonce: nonce.into_secret(),
         pkce_verifier: pkce_verifier.into_secret(),
     })
 }
@@ -232,7 +227,6 @@ mod tests {
             Some("S256")
         );
         assert_eq!(query.get("state"), Some(&request.state));
-        assert_eq!(query.get("nonce"), Some(&request.nonce));
         assert!(query.contains_key("code_challenge"));
         assert!(request.pkce_verifier.len() >= 43);
     }

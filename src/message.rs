@@ -1,6 +1,5 @@
 use crate::{
-    commands::{StdbAuthCommandError, StdbAuthOperationKind},
-    session::StdbAuthSession,
+    commands::StdbAuthOperationKind, error::StdbAuthCommandError, session::StdbAuthSession,
 };
 use bevy_ecs::prelude::Message;
 

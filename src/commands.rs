@@ -1,5 +1,5 @@
 use crate::{
-    error::StdbAuthError,
+    error::{StdbAuthCommandError, StdbAuthError},
     message::StdbAuthCommandRejectedMessage,
     plugin::PendingAuthOperation,
     session::{StdbAuthCredentialMaterial, StdbAuthSession},
@@ -12,7 +12,7 @@ use bevy_ecs::{
     system::{Command, SystemParam},
 };
 use bevy_tasks::{IoTaskPool, TaskPool};
-use thiserror::Error;
+#[cfg(feature = "oidc")]
 use url::Url;
 
 /// The kind of authentication operation requested by [`StdbAuthCommands`].
@@ -26,29 +26,6 @@ pub enum StdbAuthOperationKind {
     Refresh,
     /// A pending-operation cancellation.
     Cancel,
-}
-
-/// An error returned when an authentication command cannot be accepted.
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum StdbAuthCommandError {
-    /// Another authentication operation is already pending.
-    #[error("another authentication operation is already pending")]
-    PendingOperation,
-    /// No authentication session is active.
-    #[error("no authentication session is active")]
-    NoSession,
-    /// No authentication operation is pending.
-    #[error("no authentication operation is pending")]
-    NoPendingOperation,
-    /// The active session cannot be refreshed.
-    #[error("the active authentication session cannot be refreshed")]
-    MissingRefreshToken,
-    /// The active session does not include a client ID.
-    #[error("the active authentication session does not include a client ID")]
-    MissingClientId,
-    /// The command is not supported by the active authentication source.
-    #[error("unsupported authentication command: {0}")]
-    Unsupported(String),
 }
 
 /// Options for starting an authentication flow.
@@ -290,6 +267,7 @@ impl Command for CancelPendingAuthCommand {
     }
 }
 
+#[cfg(feature = "oidc")]
 fn end_provider_session(
     session: &StdbAuthSession,
     id_token_hint: Option<&str>,
@@ -301,7 +279,7 @@ fn end_provider_session(
 
     let end_session_url = build_end_session_url(session, id_token_hint, transport_config);
 
-    #[cfg(all(feature = "oidc", feature = "browser", target_arch = "wasm32"))]
+    #[cfg(all(feature = "browser", target_arch = "wasm32"))]
     {
         web_sys::window()
             .ok_or_else(|| StdbAuthError::Internal("browser window is unavailable".to_string()))?
@@ -314,19 +292,26 @@ fn end_provider_session(
             })?;
     }
 
-    #[cfg(all(feature = "oidc", not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     {
         webbrowser::open(end_session_url.as_str()).map_err(|error| {
             StdbAuthError::Internal(format!("failed to open SpacetimeAuth logout URL: {error}"))
         })?;
     }
 
-    #[cfg(not(feature = "oidc"))]
-    let _ = end_session_url;
-
     Ok(())
 }
 
+#[cfg(not(feature = "oidc"))]
+fn end_provider_session(
+    _session: &StdbAuthSession,
+    _id_token_hint: Option<&str>,
+    _transport_config: &StdbAuthTransportConfig,
+) -> Result<(), StdbAuthError> {
+    Ok(())
+}
+
+#[cfg(feature = "oidc")]
 fn build_end_session_url(
     session: &StdbAuthSession,
     id_token_hint: Option<&str>,
@@ -364,17 +349,17 @@ fn build_end_session_url(
     end_session_url
 }
 
+#[cfg(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32")))]
 fn clear_persisted_credentials_best_effort(session: &StdbAuthSession) {
-    #[cfg(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32")))]
     if session.source == crate::session::StdbAuthSessionSource::Oidc
         && let Some(client_id) = session.client_id.as_deref()
     {
         crate::oidc::persistence::clear_refresh_token_best_effort(client_id);
     }
-
-    #[cfg(not(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32"))))]
-    let _ = session;
 }
+
+#[cfg(not(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32"))))]
+fn clear_persisted_credentials_best_effort(_session: &StdbAuthSession) {}
 
 fn reject_if_pending(world: &mut World, operation: StdbAuthOperationKind) -> bool {
     if world.contains_resource::<PendingAuthOperation>() {

@@ -20,14 +20,14 @@ const CALLBACK_POLL_INTERVAL: Duration = Duration::from_millis(10);
 const CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(5);
 const CALLBACK_REQUEST_BUFFER_SIZE: usize = 8192;
 
-pub(crate) fn acquire_session(
+pub(crate) async fn acquire_session(
     options: StdbOidcAuthOptions,
     transport_config: &StdbAuthTransportConfig,
 ) -> Result<StdbAuthSessionParts, StdbAuthError> {
     let redirect_uri = validate_native_redirect_uri(&options.redirect_uri)?;
 
     #[cfg(feature = "persistence")]
-    if let Some(parts) = try_refresh_stored_session(&options, transport_config) {
+    if let Some(parts) = try_refresh_stored_session(&options, transport_config).await {
         return Ok(parts);
     }
 
@@ -59,7 +59,7 @@ pub(crate) fn acquire_session(
 }
 
 #[cfg(feature = "persistence")]
-fn try_refresh_stored_session(
+async fn try_refresh_stored_session(
     options: &StdbOidcAuthOptions,
     transport_config: &StdbAuthTransportConfig,
 ) -> Option<StdbAuthSessionParts> {
@@ -75,12 +75,9 @@ fn try_refresh_stored_session(
         post_logout_redirect_uri: options.post_logout_redirect_uri.clone(),
     };
 
-    bevy_tasks::block_on(crate::refresh::refresh_session(
-        session,
-        refresh_token,
-        transport_config.clone(),
-    ))
-    .ok()
+    crate::refresh::refresh_session(session, refresh_token, transport_config.clone())
+        .await
+        .ok()
 }
 
 fn bind_loopback_listener(redirect_uri: &Url) -> Result<TcpListener, StdbAuthError> {
@@ -140,7 +137,7 @@ fn exchange_authorization_code(
     transport_config: &StdbAuthTransportConfig,
     token_form: common::StdbOidcTokenRequestForm,
 ) -> Result<StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.blocking_token_client()?;
+    let client = transport_config.token_client()?;
     let response = client
         .post(transport_config.token_endpoint_url())
         .form(&token_form.params)

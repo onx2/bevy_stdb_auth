@@ -47,11 +47,8 @@ pub mod prelude {
             ReadStdbAuthRefreshFailedMessage, ReadStdbAuthSucceededMessage,
             ReadStdbAuthTokenRefreshedMessage,
         },
-        commands::{
-            StdbAuthCommandError, StdbAuthCommands, StdbAuthOperationKind, StdbLoginOptions,
-            StdbLogoutOptions,
-        },
-        error::StdbAuthError,
+        commands::{StdbAuthCommands, StdbAuthOperationKind, StdbLoginOptions, StdbLogoutOptions},
+        error::{StdbAuthCommandError, StdbAuthError},
         message::{
             StdbAuthCommandRejectedMessage, StdbAuthFailedMessage, StdbAuthLogoutFailedMessage,
             StdbAuthLogoutSucceededMessage, StdbAuthRefreshFailedMessage, StdbAuthSucceededMessage,

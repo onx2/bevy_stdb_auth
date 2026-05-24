@@ -75,7 +75,7 @@ async fn exchange_refresh_token(
     transport_config: &StdbAuthTransportConfig,
     token_form: RefreshTokenRequestForm,
 ) -> Result<crate::token::StdbTokenResponse, StdbAuthError> {
-    let client = transport_config.blocking_token_client()?;
+    let client = transport_config.token_client()?;
     let response = client
         .post(transport_config.token_endpoint_url())
         .form(&token_form.params)

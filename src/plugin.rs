@@ -15,12 +15,6 @@ use bevy_tasks::{Task, block_on, poll_once};
 use bevy_time::{Time, Timer, TimerMode};
 use std::time::{Duration, Instant};
 
-const DEFAULT_REFRESH_BUFFER_SECS: u64 = 60;
-const DEFAULT_REFRESH_RETRY_DELAY_SECS: u64 = 5;
-const DEFAULT_REFRESH_MAX_RETRY_DELAY_SECS: u64 = 60;
-const DEFAULT_REFRESH_MAX_ATTEMPTS: u32 = 3;
-const DEFAULT_REFRESH_BACKOFF_FACTOR: f32 = 2.0;
-
 /// Controls automatic refresh for sessions with refresh credentials.
 #[derive(Clone, Debug)]
 pub struct StdbAutoRefreshOptions {
@@ -39,11 +33,11 @@ pub struct StdbAutoRefreshOptions {
 impl Default for StdbAutoRefreshOptions {
     fn default() -> Self {
         Self {
-            refresh_buffer: Duration::from_secs(DEFAULT_REFRESH_BUFFER_SECS),
-            initial_retry_delay: Duration::from_secs(DEFAULT_REFRESH_RETRY_DELAY_SECS),
-            max_attempts: DEFAULT_REFRESH_MAX_ATTEMPTS,
-            backoff_factor: DEFAULT_REFRESH_BACKOFF_FACTOR,
-            max_retry_delay: Duration::from_secs(DEFAULT_REFRESH_MAX_RETRY_DELAY_SECS),
+            refresh_buffer: Duration::from_secs(60),
+            initial_retry_delay: Duration::from_secs(5),
+            max_attempts: 3,
+            backoff_factor: 2.0,
+            max_retry_delay: Duration::from_secs(60),
         }
     }
 }
@@ -53,23 +47,28 @@ impl Default for StdbAutoRefreshOptions {
 pub struct StdbAuthPlugin {
     /// Automatic refresh behavior for sessions with refresh credentials.
     pub auto_refresh: Option<StdbAutoRefreshOptions>,
-    /// How long token endpoint requests may run before timing out.
-    pub token_request_timeout: Duration,
+    /// How long native token endpoint requests may run before timing out.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub token_request_timeout: Option<Duration>,
 }
 
 impl Default for StdbAuthPlugin {
     fn default() -> Self {
         Self {
             auto_refresh: Some(StdbAutoRefreshOptions::default()),
-            token_request_timeout: StdbAuthTransportConfig::default_token_request_timeout(),
+            #[cfg(not(target_arch = "wasm32"))]
+            token_request_timeout: StdbAuthTransportConfig::default().token_request_timeout(),
         }
     }
 }
 
 impl Plugin for StdbAuthPlugin {
     fn build(&self, app: &mut App) {
+        #[cfg(not(target_arch = "wasm32"))]
         let transport_config = StdbAuthTransportConfig::try_new(self.token_request_timeout)
             .expect("invalid SpacetimeAuth transport configuration");
+        #[cfg(target_arch = "wasm32")]
+        let transport_config = StdbAuthTransportConfig::default();
         app.insert_resource(transport_config);
         app.insert_resource(StdbAuthRefreshConfig {
             options: self.auto_refresh.clone(),
@@ -357,11 +356,8 @@ fn apply_login_success(world: &mut World, parts: StdbAuthSessionParts) {
     world.write_message(StdbAuthSucceededMessage { session });
 }
 
+#[cfg(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32")))]
 fn persist_refresh_token_best_effort(parts: &StdbAuthSessionParts) {
-    #[cfg(not(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32"))))]
-    let _ = parts;
-
-    #[cfg(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32")))]
     if parts.session.source == crate::session::StdbAuthSessionSource::Oidc
         && let (Some(client_id), Some(refresh_token)) = (
             parts.session.client_id.as_deref(),
@@ -371,6 +367,9 @@ fn persist_refresh_token_best_effort(parts: &StdbAuthSessionParts) {
         crate::oidc::persistence::store_refresh_token_best_effort(client_id, refresh_token);
     }
 }
+
+#[cfg(not(all(feature = "oidc", feature = "persistence", not(target_arch = "wasm32"))))]
+fn persist_refresh_token_best_effort(_parts: &StdbAuthSessionParts) {}
 
 #[cfg(test)]
 mod tests {

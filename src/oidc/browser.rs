@@ -10,8 +10,11 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+/// The SessionStorage key used to store pending OIDC authorization state in the browser.
 const PENDING_AUTH_STORAGE_KEY: &str = "bevy_stdb_auth.oidc.pending";
-const PENDING_AUTH_TTL_MS: f64 = 10.0 * 60.0 * 1000.0;
+
+/// The time-to-live for pending OIDC authorization state in the browser, in milliseconds.
+const PENDING_AUTH_TTL_MS: f64 = 5.0 * 60.0 * 1000.0; // 5 minutes
 
 #[derive(Deserialize, Serialize)]
 struct BrowserPendingAuthorization {
@@ -19,7 +22,6 @@ struct BrowserPendingAuthorization {
     redirect_uri: String,
     post_logout_redirect_uri: Option<String>,
     state: String,
-    nonce: String,
     pkce_verifier: String,
     created_at_ms: f64,
 }
@@ -94,7 +96,6 @@ fn start_authorization_redirect(
         redirect_uri: options.redirect_uri.clone(),
         post_logout_redirect_uri: options.post_logout_redirect_uri.clone(),
         state: authorization_request.state,
-        nonce: authorization_request.nonce,
         pkce_verifier: authorization_request.pkce_verifier,
         created_at_ms: js_sys::Date::now(),
     };
