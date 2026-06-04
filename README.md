@@ -10,6 +10,8 @@ A [Bevy](https://bevy.org/)-native integration for the [SpacetimeAuth](https://s
 
 ## Overview
 
+**This is very new and not fully tested. Please provide feedback through [issues](https://github.com/onx2/bevy_stdb_auth/issues).**
+
 `bevy_stdb_auth` adapts SpacetimeAuth login, refresh, logout, and session lifecycle state into Bevy-style resources, systems, plugins, commands, and messages.
 
 This crate is intentionally scoped to SpacetimeAuth and does not manage SpacetimeDB connections directly. Applications decide how to use auth tokens, including passing them to [bevy_stdb](https://github.com/onx2/bevy_stdb), directly with the SpacetimeDB SDK, HTTP clients, or some other recipient.
