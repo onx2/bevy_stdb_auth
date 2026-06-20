@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
       - name: Install stable Rust
-        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456a2dd1203645d3aa7fa16 # master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           components: rustfmt
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
       - name: Install Rust (${{ matrix.toolchain }})
-        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456a2dd1203645d3aa7fa16 # master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
       - name: Install Rust (${{ matrix.toolchain }})
-        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456a2dd1203645d3aa7fa16 # master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
@@ -134,7 +134,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
       - name: Install Rust (${{ matrix.toolchain }}) with WASM target
-        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456a2dd1203645d3aa7fa16 # master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
@@ -159,7 +159,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
 
       - name: Install stable Rust
-        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456a2dd1203645d3aa7fa16 # master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           targets: wasm32-unknown-unknown
