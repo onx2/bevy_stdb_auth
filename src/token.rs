@@ -19,8 +19,8 @@ pub(crate) struct StdbTokenResponse {
     pub(crate) refresh_token: Option<String>,
     /// The granted OAuth scopes.
     pub(crate) scope: Option<String>,
-    /// The optional OIDC ID token.
-    pub(crate) id_token: Option<String>,
+    /// The OIDC ID token.
+    pub(crate) id_token: String,
 }
 
 impl StdbTokenResponse {
@@ -33,9 +33,11 @@ impl StdbTokenResponse {
         let access_token = require_non_empty(self.access_token, "access_token")?;
         let token_type = require_bearer_token_type(self.token_type)?;
         let expires_in = validate_expires_in(self.expires_in)?;
+        let id_token = require_non_empty(self.id_token, "id_token")?;
+
         let credentials = StdbAuthCredentialMaterial::new(
             optional_non_empty(self.refresh_token),
-            optional_non_empty(self.id_token),
+            id_token.clone(),
         );
         let session = StdbAuthSession {
             access_token,
@@ -46,7 +48,7 @@ impl StdbTokenResponse {
             client_id,
             source,
             post_logout_redirect_uri,
-            id_token: credentials.id_token.clone(),
+            id_token,
         };
 
         Ok(StdbAuthSessionParts::new(session, credentials))
@@ -103,7 +105,7 @@ mod tests {
             expires_in: Some(60),
             refresh_token: Some("refresh".to_string()),
             scope: Some("openid".to_string()),
-            id_token: Some("id".to_string()),
+            id_token: "id".to_string(),
         }
     }
 
@@ -120,8 +122,8 @@ mod tests {
         assert_eq!(parts.session.access_token, "access");
         assert!(parts.session.can_refresh);
         assert_eq!(parts.credentials.refresh_token.as_deref(), Some("refresh"));
-        assert_eq!(parts.credentials.id_token.as_deref(), Some("id"));
-        assert_eq!(parts.session.id_token.as_deref(), Some("id"));
+        assert_eq!(parts.credentials.id_token, "id");
+        assert_eq!(parts.session.id_token, "id");
     }
 
     #[test]
@@ -168,7 +170,6 @@ mod tests {
         let mut response = valid_token_response();
         response.refresh_token = Some("  ".to_string());
         response.scope = Some("  ".to_string());
-        response.id_token = Some("  ".to_string());
 
         let parts = response
             .into_session_parts(None, StdbAuthSessionSource::Oidc, None)
@@ -177,7 +178,7 @@ mod tests {
         assert!(!parts.session.can_refresh);
         assert!(parts.session.scope.is_none());
         assert!(parts.credentials.refresh_token.is_none());
-        assert!(parts.credentials.id_token.is_none());
-        assert!(parts.session.id_token.is_none());
+        assert_eq!(parts.credentials.id_token, "id");
+        assert_eq!(parts.session.id_token, "id");
     }
 }
