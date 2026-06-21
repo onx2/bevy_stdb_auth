@@ -244,9 +244,10 @@ The `steam` and `persistence` features are native-only and are rejected on `wasm
 
 ## Compatibility
 
-| bevy_stdb_auth | Bevy | Rust |
+| bevy_stdb_auth | Bevy | MSRV |
 |---|---|---|
-| 0.1 | 0.18 | 1.89+ |
+| 0.1 | 0.18 | 1.89 |
+| 0.2 | 0.19 | 1.95 |
 
 ## Notes
 
