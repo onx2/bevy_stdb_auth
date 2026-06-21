@@ -10,55 +10,61 @@ permissions:
   contents: read
 
 env:
+  CARGO_INCREMENTAL: "0"
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
 
 jobs:
+  # 1. Formatting (Stable Only)
   fmt:
     name: Format
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: stable
           components: rustfmt
 
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Check formatting
         run: cargo fmt --all --check
 
+  # 2. Native Default Compilation & Tests (Matrix: OS & Toolchain)
   native-default:
-    name: Native default (${{ matrix.os }})
+    name: Native Default (${{ matrix.toolchain }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        toolchain: ["1.95.0", "stable"]
     env:
       RUSTDOCFLAGS: -D warnings
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Install stable Rust
+      - name: Install Rust (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ matrix.toolchain }}
           components: clippy
 
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2
+        with:
+          key: native-${{ matrix.os }}-${{ matrix.toolchain }}
 
-      - name: Check default native build
-        run: cargo check --all-targets --locked
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev pkg-config
 
       - name: Run default native clippy
         run: cargo clippy --all-targets --locked -- -D warnings
@@ -66,125 +72,105 @@ jobs:
       - name: Run default native tests
         run: cargo test --all-targets --locked
 
-      - name: Build default native docs
-        run: cargo doc --no-deps --locked
-
+  # 3. Native Feature Permutations (Matrix: Features & Toolchain)
   native-feature-matrix:
-    name: Native features (${{ matrix.name }})
+    name: Native Features (${{ matrix.feature.name }} on ${{ matrix.toolchain }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include:
+        toolchain: ["1.95.0", "stable"]
+        feature:
           - name: oidc
-            args: --all-targets --no-default-features --features oidc
+            args: --no-default-features --features oidc
           - name: steam
-            args: --all-targets --no-default-features --features steam
+            args: --no-default-features --features steam
           - name: oidc-persistence
-            args: --all-targets --no-default-features --features oidc,persistence
+            args: --no-default-features --features oidc,persistence
           - name: oidc-steam
-            args: --all-targets --no-default-features --features oidc,steam
+            args: --no-default-features --features oidc,steam
           - name: oidc-steam-persistence
-            args: --all-targets --no-default-features --features oidc,steam,persistence
+            args: --no-default-features --features oidc,steam,persistence
           - name: all-features
-            args: --all-targets --all-features
+            args: --all-features
     env:
       RUSTDOCFLAGS: -D warnings
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Install stable Rust
+      - name: Install Rust (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ matrix.toolchain }}
           components: clippy
 
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          key: features-${{ matrix.feature.name }}-${{ matrix.toolchain }}
 
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
 
-      - name: Check native feature set
-        run: cargo check ${{ matrix.args }} --locked
-
       - name: Run native feature-set clippy
-        run: cargo clippy ${{ matrix.args }} --locked -- -D warnings
+        run: cargo clippy --all-targets ${{ matrix.feature.args }} --locked -- -D warnings
 
-  browser:
-    name: Browser wasm
+  # 4. Browser WASM (Matrix: Toolchain)
+  browser-wasm:
+    name: Browser WASM (${{ matrix.toolchain }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: ["1.95.0", "stable"]
     env:
       RUSTDOCFLAGS: -D warnings
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Install stable Rust with wasm target
+      - name: Install Rust (${{ matrix.toolchain }}) with WASM target
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ matrix.toolchain }}
           components: clippy
           targets: wasm32-unknown-unknown
 
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
-
-      - name: Check browser wasm build
-        run: cargo check --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          key: wasm-${{ matrix.toolchain }}
 
       - name: Run browser wasm clippy
         run: cargo clippy --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked -- -D warnings
 
-      - name: Build browser wasm docs
-        run: cargo doc --target wasm32-unknown-unknown --no-deps --no-default-features --features oidc,browser --locked
-
-  package:
-    name: Package dry run
+  # 5. Docs and Publishing Dry-Run (Stable Only)
+  release-sanity:
+    name: Docs & Package Dry Run
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTDOCFLAGS: -D warnings
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
 
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      - name: Build default native docs
+        run: cargo doc --no-deps --locked
+
+      - name: Build browser wasm docs
+        run: cargo doc --target wasm32-unknown-unknown --no-deps --no-default-features --features oidc,browser --locked
 
       - name: Verify package contents and publishability
         run: cargo publish --dry-run --locked
-
-  msrv:
-    name: MSRV check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install MSRV Rust
-        uses: dtolnay/rust-toolchain@1.89.0
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache cargo registry and build artifacts
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install Linux system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libdbus-1-dev pkg-config
-
-      - name: Check default feature set on MSRV
-        run: cargo check --all-targets --locked
-
-      - name: Check all native features on MSRV
-        run: cargo check --all-targets --all-features --locked
-
-      - name: Check browser feature set on MSRV
-        run: cargo check --target wasm32-unknown-unknown --no-default-features --features oidc,browser --locked

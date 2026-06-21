@@ -144,6 +144,8 @@ struct StartLoginCommand {
 }
 
 impl Command for StartLoginCommand {
+    type Out = ();
+
     fn apply(self, world: &mut World) {
         if reject_if_pending(world, StdbAuthOperationKind::Login) {
             return;
@@ -161,6 +163,8 @@ struct StartLogoutCommand {
 }
 
 impl Command for StartLogoutCommand {
+    type Out = ();
+
     fn apply(self, world: &mut World) {
         if reject_if_pending(world, StdbAuthOperationKind::Logout) {
             return;
@@ -197,6 +201,8 @@ impl Command for StartLogoutCommand {
 struct StartRefreshCommand;
 
 impl Command for StartRefreshCommand {
+    type Out = ();
+
     fn apply(self, world: &mut World) {
         if reject_if_pending(world, StdbAuthOperationKind::Refresh) {
             return;
@@ -244,6 +250,8 @@ impl Command for StartRefreshCommand {
 struct CancelPendingAuthCommand;
 
 impl Command for CancelPendingAuthCommand {
+    type Out = ();
+
     fn apply(self, world: &mut World) {
         if world.remove_resource::<PendingAuthOperation>().is_none() {
             reject_auth_command(
