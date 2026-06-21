@@ -45,12 +45,12 @@ fn acquire_token_response(
 
     let ticket = request_steam_webapi_ticket(&steam_client)?;
 
-    exchange_steam_ticket_request(&options.client_id, &ticket)
+    exchange_steam_ticket_request(&options, &ticket)
 }
 
 /// Exchanges a Steam Web API ticket for a token response.
 fn exchange_steam_ticket_request(
-    client_id: &str,
+    options: &StdbSteamAuthOptions,
     steam_ticket: &[u8],
 ) -> Result<StdbTokenResponse, StdbAuthError> {
     let client = crate::transport::token_client()?;
@@ -58,7 +58,8 @@ fn exchange_steam_ticket_request(
         .form(&[
             ("grant_type", "urn:spacetimeauth:steam-ticket"),
             ("steam_ticket", hex::encode(steam_ticket).as_str()),
-            ("client_id", client_id),
+            ("client_id", &options.client_id),
+            ("steam_app_id", &options.app_id.to_string()),
         ])
         .send()
         .map_err(StdbAuthError::from)?
