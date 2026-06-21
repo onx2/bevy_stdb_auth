@@ -46,6 +46,7 @@ impl StdbTokenResponse {
             client_id,
             source,
             post_logout_redirect_uri,
+            id_token: credentials.id_token.clone(),
         };
 
         Ok(StdbAuthSessionParts::new(session, credentials))
@@ -120,6 +121,7 @@ mod tests {
         assert!(parts.session.can_refresh);
         assert_eq!(parts.credentials.refresh_token.as_deref(), Some("refresh"));
         assert_eq!(parts.credentials.id_token.as_deref(), Some("id"));
+        assert_eq!(parts.session.id_token.as_deref(), Some("id"));
     }
 
     #[test]
@@ -176,5 +178,6 @@ mod tests {
         assert!(parts.session.scope.is_none());
         assert!(parts.credentials.refresh_token.is_none());
         assert!(parts.credentials.id_token.is_none());
+        assert!(parts.session.id_token.is_none());
     }
 }

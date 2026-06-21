@@ -29,6 +29,8 @@ pub struct StdbAuthSession {
     pub source: StdbAuthSessionSource,
     /// The optional URI returned to after provider logout.
     pub post_logout_redirect_uri: Option<String>,
+    /// The optional OIDC ID token.
+    pub id_token: Option<String>,
 }
 
 /// Stores credential material for the active [`StdbAuthSession`].
@@ -86,6 +88,7 @@ mod tests {
             client_id: Some("client".to_string()),
             source: StdbAuthSessionSource::Oidc,
             post_logout_redirect_uri: None,
+            id_token: None,
         }
     }
 
