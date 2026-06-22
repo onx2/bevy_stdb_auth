@@ -181,7 +181,7 @@ impl Command for StartLogoutCommand {
 
         let id_token_hint = world
             .get_resource::<StdbAuthCredentialMaterial>()
-            .and_then(|credentials| credentials.id_token.clone());
+            .and_then(|credentials| Some(credentials.id_token.clone()));
         let options = self.options;
         let task = IoTaskPool::get_or_init(TaskPool::default).spawn(async move {
             if options.forget_device {
@@ -379,6 +379,7 @@ mod tests {
     fn session_with_refresh_credentials() -> StdbAuthSession {
         StdbAuthSession {
             access_token: "access".to_string(),
+            id_token: "id".to_string(),
             token_type: "Bearer".to_string(),
             expires_at: None,
             can_refresh: true,
@@ -482,7 +483,7 @@ mod tests {
         world.insert_resource(session);
         world.insert_resource(StdbAuthCredentialMaterial::new(
             Some("refresh".to_string()),
-            None,
+            "id".to_string(),
         ));
 
         StartRefreshCommand.apply(&mut world);

@@ -359,6 +359,7 @@ mod tests {
     fn session(expires_at: Option<Instant>) -> StdbAuthSession {
         StdbAuthSession {
             access_token: "access".to_string(),
+            id_token: "id".to_string(),
             token_type: "Bearer".to_string(),
             expires_at,
             can_refresh: true,
