@@ -45,7 +45,7 @@ fn acquire_token_response(
 
     let ticket = request_steam_webapi_ticket(&steam_client)?;
 
-    exchange_steam_ticket_request(&options, &ticket)
+    exchange_steam_ticket_request(options, &ticket)
 }
 
 /// Exchanges a Steam Web API ticket for a token response.
