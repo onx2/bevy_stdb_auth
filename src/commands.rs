@@ -180,8 +180,7 @@ impl Command for StartLogoutCommand {
         };
 
         let id_token_hint = world
-            .get_resource::<StdbAuthCredentialMaterial>()
-            .and_then(|credentials| Some(credentials.id_token.clone()));
+            .get_resource::<StdbAuthCredentialMaterial>().map(|credentials| credentials.id_token.clone());
         let options = self.options;
         let task = IoTaskPool::get_or_init(TaskPool::default).spawn(async move {
             if options.forget_device {
