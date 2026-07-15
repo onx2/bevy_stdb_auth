@@ -131,6 +131,7 @@ mod tests {
     fn previous_session() -> StdbAuthSession {
         StdbAuthSession {
             access_token: "old_access".to_string(),
+            id_token: "id".to_string(),
             token_type: "Bearer".to_string(),
             expires_at: None,
             can_refresh: true,
@@ -169,7 +170,7 @@ mod tests {
             expires_in: Some(60),
             refresh_token: None,
             scope: None,
-            id_token: None,
+            id_token: "new_id".to_string(),
         }
         .into_session_parts(
             Some("client".to_string()),
@@ -194,6 +195,7 @@ mod tests {
         let parts = StdbAuthSessionParts::new(
             StdbAuthSession {
                 access_token: "new_access".to_string(),
+                id_token: "new_id".to_string(),
                 token_type: "Bearer".to_string(),
                 expires_at: None,
                 can_refresh: true,
@@ -202,7 +204,7 @@ mod tests {
                 source: StdbAuthSessionSource::Oidc,
                 post_logout_redirect_uri: None,
             },
-            StdbAuthCredentialMaterial::new(Some("new_refresh".to_string()), None),
+            StdbAuthCredentialMaterial::new(Some("new_refresh".to_string()), "new_id".to_string()),
         );
 
         let parts = retain_refresh_context(previous_session(), "old_refresh".to_string(), parts);

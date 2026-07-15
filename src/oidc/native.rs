@@ -61,6 +61,7 @@ async fn try_refresh_stored_session(options: &StdbOidcAuthOptions) -> Option<Std
     let refresh_token = super::persistence::stored_refresh_token_best_effort(&options.client_id)?;
     let session = crate::session::StdbAuthSession {
         access_token: String::new(),
+        id_token: String::new(),
         token_type: "Bearer".to_string(),
         expires_at: None,
         can_refresh: true,

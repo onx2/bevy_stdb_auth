@@ -29,17 +29,19 @@ pub struct StdbAuthSession {
     pub source: StdbAuthSessionSource,
     /// The optional URI returned to after provider logout.
     pub post_logout_redirect_uri: Option<String>,
+    /// The OIDC ID token.
+    pub id_token: String,
 }
 
 /// Stores credential material for the active [`StdbAuthSession`].
-#[derive(Clone, Default, Resource)]
+#[derive(Clone, Resource, Default)]
 pub(crate) struct StdbAuthCredentialMaterial {
     pub(crate) refresh_token: Option<String>,
-    pub(crate) id_token: Option<String>,
+    pub(crate) id_token: String,
 }
 
 impl StdbAuthCredentialMaterial {
-    pub(crate) fn new(refresh_token: Option<String>, id_token: Option<String>) -> Self {
+    pub(crate) fn new(refresh_token: Option<String>, id_token: String) -> Self {
         Self {
             refresh_token,
             id_token,
@@ -86,6 +88,7 @@ mod tests {
             client_id: Some("client".to_string()),
             source: StdbAuthSessionSource::Oidc,
             post_logout_redirect_uri: None,
+            id_token: "id".to_string(),
         }
     }
 
@@ -95,7 +98,7 @@ mod tests {
         world.insert_resource(session());
         world.insert_resource(StdbAuthCredentialMaterial::new(
             Some("refresh".to_string()),
-            Some("id".to_string()),
+            "id".to_string(),
         ));
 
         clear_session(&mut world);
