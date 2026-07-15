@@ -34,13 +34,11 @@ pub struct StdbAuthSession {
 }
 
 /// Stores credential material for the active [`StdbAuthSession`].
-#[derive(Clone, Resource)]
-#[derive(Default)]
+#[derive(Clone, Resource, Default)]
 pub(crate) struct StdbAuthCredentialMaterial {
     pub(crate) refresh_token: Option<String>,
     pub(crate) id_token: String,
 }
-
 
 impl StdbAuthCredentialMaterial {
     pub(crate) fn new(refresh_token: Option<String>, id_token: String) -> Self {
