@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        toolchain: ["1.95.0", "stable"]
+        toolchain: ["1.97.1", "stable"]
     env:
       RUSTDOCFLAGS: -D warnings
 
@@ -80,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: ["1.95.0", "stable"]
+        toolchain: ["1.97.1", "stable"]
         feature:
           - name: oidc
             args: --no-default-features --features oidc
@@ -126,7 +126,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: ["1.95.0", "stable"]
+        toolchain: ["1.97.1", "stable"]
     env:
       RUSTDOCFLAGS: -D warnings
 

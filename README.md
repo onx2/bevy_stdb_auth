@@ -234,10 +234,10 @@ For apps targeting both native and browser, configure features per target so nat
 ```toml
 [dependencies]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy_stdb_auth = { version = "0.1", default-features = false, features = ["oidc", "persistence", "steam"] }
+bevy_stdb_auth = { version = "0.4", default-features = false, features = ["oidc", "persistence", "steam"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy_stdb_auth = { version = "0.1", default-features = false, features = ["oidc", "browser"] }
+bevy_stdb_auth = { version = "0.4", default-features = false, features = ["oidc", "browser"] }
 ```
 
 The `steam` and `persistence` features are native-only and are rejected on `wasm32` targets. Browser OIDC builds must enable `oidc` and `browser` together with `default-features = false`. Native all-feature builds still use the native OIDC implementation even when the `browser` feature is enabled.
@@ -247,7 +247,8 @@ The `steam` and `persistence` features are native-only and are rejected on `wasm
 | bevy_stdb_auth | Bevy | MSRV |
 |---|---|---|
 | 0.1 | 0.18 | 1.89 |
-| 0.2 | 0.19 | 1.95 |
+| 0.2 – 0.3 | 0.19 | 1.95 |
+| 0.4 | 0.20 | 1.97.1 |
 
 ## Notes
 
