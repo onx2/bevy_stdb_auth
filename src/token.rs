@@ -4,7 +4,8 @@ use crate::{
         StdbAuthCredentialMaterial, StdbAuthSession, StdbAuthSessionParts, StdbAuthSessionSource,
     },
 };
-use std::time::{Duration, Instant};
+use bevy_platform::time::Instant;
+use std::time::Duration;
 
 /// A normalized SpacetimeAuth token endpoint response.
 #[derive(Clone, Default, PartialEq, Eq, serde::Deserialize)]

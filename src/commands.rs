@@ -460,6 +460,22 @@ mod tests {
         assert_eq!(rejected[0].error, StdbAuthCommandError::PendingOperation);
     }
 
+    // Auth tasks block on network and loopback I/O, so they must not run inline on the
+    // calling thread the way the single-threaded `bevy_tasks` pool runs them.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn io_task_pool_runs_auth_tasks_off_the_calling_thread() {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let task = IoTaskPool::get_or_init(TaskPool::default)
+            .spawn(async move { receiver.recv_timeout(std::time::Duration::from_secs(5)) });
+
+        sender
+            .send(())
+            .expect("spawned task should still be waiting for the signal");
+
+        assert!(bevy_tasks::block_on(task).is_ok());
+    }
+
     #[test]
     fn refresh_admission_rejects_missing_credentials() {
         let mut world = world_with_rejection_messages();
