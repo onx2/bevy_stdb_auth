@@ -1,6 +1,9 @@
 use bevy_ecs::prelude::SystemSet;
 
 /// Labels systems that manage SpacetimeAuth lifecycle work.
+///
+/// [`StdbAuthPlugin`](crate::prelude::StdbAuthPlugin) configures these sets in
+/// [`PreUpdate`](bevy_app::PreUpdate) and runs them in declaration order.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, SystemSet)]
 pub enum StdbAuthSet {
     /// Runs application systems that submit authentication commands.

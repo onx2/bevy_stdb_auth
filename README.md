@@ -142,6 +142,8 @@ fn logout(mut auth: StdbAuthCommands) {
 
 `StdbLogoutOptions::default()` ends the SpacetimeAuth provider session through `https://auth.spacetimedb.com/oidc/session/end` and retains persisted refresh credentials. Set `end_provider_session` to `false` for local-only logout. Set `forget_device` to remove persisted refresh credentials from this device when the `persistence` feature is enabled.
 
+`StdbAuthPlugin` runs its systems in `PreUpdate`, ordered by `StdbAuthSet`: `Command`, `BrowserCallback`, `AutoRefresh`, then `Poll`. Systems that send auth commands from `PreUpdate` can run in `StdbAuthSet::Command` so their requests are applied before the plugin's auto-refresh and polling systems.
+
 ## Token refresh
 
 Sessions with refresh credentials can be refreshed manually through `StdbAuthCommands::refresh_now`. When `StdbAuthPlugin::auto_refresh` is `Some`, the plugin requests a refresh before expiration using `StdbAutoRefreshOptions::refresh_buffer`.
@@ -168,6 +170,7 @@ fn read_auth_session(session: Option<Res<StdbAuthSession>>) {
 `StdbAuthSession` stores:
 
 - access token
+- ID token
 - token type
 - optional expiration instant
 - whether refresh credentials are available
@@ -176,7 +179,7 @@ fn read_auth_session(session: Option<Res<StdbAuthSession>>) {
 - session source kind
 - optional post-logout redirect URI
 
-Refresh tokens and raw OIDC ID tokens are kept in internal credential resources instead of `StdbAuthSession` or lifecycle messages.
+Refresh tokens are kept in internal credential resources instead of `StdbAuthSession` or lifecycle messages. The ID token is part of `StdbAuthSession`, so treat the session and the lifecycle messages that carry it as sensitive when logging or forwarding them.
 
 ## Lifecycle readers
 
@@ -216,7 +219,7 @@ fn connect_on_auth_success(
 }
 ```
 
-Token refresh can be handled the same way by listening for `StdbAuthTokenRefreshedMessage` and updating or reconnecting the SpacetimeDB client according to your app's policy.
+Token refresh can be handled the same way by reading `ReadStdbAuthTokenRefreshedMessage` and updating or reconnecting the SpacetimeDB client according to your app's policy.
 
 ## Feature flags
 

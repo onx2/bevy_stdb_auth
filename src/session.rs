@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::{Resource, World};
-use std::time::Instant;
+use bevy_platform::time::Instant;
 
 /// The source that produced a [`StdbAuthSession`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

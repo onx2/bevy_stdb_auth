@@ -254,11 +254,14 @@ dependencies = [
  "bevy_reflect",
  "bevy_tasks",
  "bevy_utils",
+ "console_error_panic_hook",
  "ctrlc",
  "downcast-rs",
  "log",
  "thiserror 2.0.18",
  "variadics_please",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -355,6 +358,7 @@ dependencies = [
  "spin",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-time",
  "windows-sys 0.61.2",
 ]
 
@@ -412,6 +416,7 @@ dependencies = [
  "apple-native-keyring-store",
  "bevy_app",
  "bevy_ecs",
+ "bevy_platform",
  "bevy_tasks",
  "bevy_time",
  "hex",
@@ -436,10 +441,12 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbd8116f12dc50bde3758a72fba85e1f4c00e6c66d0ad58bdc46c0c0690829a8"
 dependencies = [
+ "async-channel",
  "async-executor",
  "async-task",
  "atomic-waker",
  "bevy_platform",
+ "concurrent-queue",
  "crossbeam-queue",
  "derive_more",
  "futures-lite",
@@ -645,6 +652,16 @@ checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
 dependencies = [
  "crossbeam-utils",
  "portable-atomic",
+]
+
+[[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -10,9 +10,9 @@ use crate::{
 };
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, Resource, World, resource_exists};
+use bevy_platform::time::Instant;
 use bevy_tasks::{Task, block_on, poll_once};
-use bevy_time::{Time, Timer, TimerMode};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Controls automatic refresh for sessions with refresh credentials.
 #[derive(Clone, Debug)]
@@ -112,7 +112,7 @@ pub(crate) struct StdbAuthRefreshConfig {
 pub(crate) struct StdbAutoRefreshBackoff {
     attempts: u32,
     current_delay: Duration,
-    timer: Option<Timer>,
+    retry_at: Option<Instant>,
 }
 
 #[derive(Resource)]
@@ -184,31 +184,18 @@ fn request_auto_refresh(world: &mut World) {
     });
 }
 
-fn auto_refresh_backoff_ready(world: &mut World, options: &StdbAutoRefreshOptions) -> bool {
-    let delta = world
-        .get_resource::<Time>()
-        .map(Time::delta)
-        .unwrap_or_default();
-    let mut backoff = world
-        .get_resource_mut::<StdbAutoRefreshBackoff>()
+fn auto_refresh_backoff_ready(world: &World, options: &StdbAutoRefreshOptions) -> bool {
+    let backoff = world
+        .get_resource::<StdbAutoRefreshBackoff>()
         .expect("StdbAutoRefreshBackoff should be inserted when StdbAuthPlugin is built");
 
     if options.max_attempts > 0 && backoff.attempts >= options.max_attempts {
         return false;
     }
 
-    let Some(timer) = backoff.timer.as_mut() else {
-        return true;
-    };
-
-    timer.tick(delta);
-
-    if !timer.just_finished() {
-        return false;
-    }
-
-    backoff.timer = None;
-    true
+    backoff
+        .retry_at
+        .is_none_or(|retry_at| Instant::now() >= retry_at)
 }
 
 fn should_refresh_session(session: &StdbAuthSession, refresh_buffer: Duration) -> bool {
@@ -294,7 +281,7 @@ fn reset_auto_refresh_backoff(world: &mut World) {
     if let Some(mut backoff) = world.get_resource_mut::<StdbAutoRefreshBackoff>() {
         backoff.attempts = 0;
         backoff.current_delay = Duration::ZERO;
-        backoff.timer = None;
+        backoff.retry_at = None;
     }
 }
 
@@ -312,7 +299,7 @@ fn arm_auto_refresh_backoff(world: &mut World) {
     backoff.attempts = backoff.attempts.saturating_add(1);
 
     if options.max_attempts > 0 && backoff.attempts >= options.max_attempts {
-        backoff.timer = None;
+        backoff.retry_at = None;
         return;
     }
 
@@ -321,7 +308,7 @@ fn arm_auto_refresh_backoff(world: &mut World) {
     }
 
     let delay = backoff.current_delay.min(options.max_retry_delay);
-    backoff.timer = Some(Timer::new(delay, TimerMode::Once));
+    backoff.retry_at = Some(Instant::now() + delay);
     backoff.current_delay = delay
         .mul_f32(options.backoff_factor.max(1.0))
         .min(options.max_retry_delay);
@@ -396,7 +383,7 @@ mod tests {
         arm_auto_refresh_backoff(&mut world);
 
         assert!(!auto_refresh_backoff_ready(
-            &mut world,
+            &world,
             &StdbAutoRefreshOptions {
                 max_attempts: 1,
                 ..Default::default()
@@ -414,7 +401,21 @@ mod tests {
         let backoff = world.resource::<StdbAutoRefreshBackoff>();
         assert_eq!(backoff.attempts, 0);
         assert!(backoff.current_delay.is_zero());
-        assert!(backoff.timer.is_none());
+        assert!(backoff.retry_at.is_none());
+    }
+
+    #[test]
+    fn auto_refresh_backoff_waits_for_retry_delay_without_time_resource() {
+        let options = StdbAutoRefreshOptions::default();
+        let mut world = world_with_auto_refresh(options.clone());
+
+        arm_auto_refresh_backoff(&mut world);
+
+        assert!(!auto_refresh_backoff_ready(&world, &options));
+
+        world.resource_mut::<StdbAutoRefreshBackoff>().retry_at = Some(Instant::now());
+
+        assert!(auto_refresh_backoff_ready(&world, &options));
     }
 
     #[test]

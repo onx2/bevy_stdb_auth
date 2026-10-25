@@ -59,6 +59,7 @@ pub mod prelude {
         error::{StdbAuthCommandError, StdbAuthError},
         plugin::{StdbAuthPlugin, StdbAutoRefreshOptions},
         session::{StdbAuthSession, StdbAuthSessionSource},
+        set::StdbAuthSet,
         source::StdbAuthSource,
     };
 }
